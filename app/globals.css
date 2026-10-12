@@ -1,26 +1,151 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --ink: #101828;
+  --paper: #f7f8fa;
+  --surface: #ffffff;
+  --surface-subtle: #f0f2f5;
+  --border: #e2e5eb;
+  --border-subtle: #ebedf2;
+  --muted: #475467;
+  --muted-light: #667085;
+  --squiggle-red: #e5484d;
+  --squiggle-red-subtle: #fff0f0;
+  --squiggle-amber: #f5a524;
+  --squiggle-amber-subtle: #fef7ec;
+  --cleared-green: #1f9d6b;
+  --cleared-green-subtle: #ebfbf3;
+  --link-blue: #2457f5;
+  --link-blue-subtle: #eef2ff;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: var(--paper);
+  --foreground: var(--ink);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --ink: #f7f8fa;
+    --paper: #0c0e12;
+    --surface: #14171f;
+    --surface-subtle: #1c212b;
+    --border: #262d3a;
+    --border-subtle: #1e232e;
+    --muted: #98a2b3;
+    --muted-light: #667085;
+    --squiggle-red: #ff6569;
+    --squiggle-red-subtle: rgba(229, 72, 77, 0.15);
+    --squiggle-amber: #fbbf24;
+    --squiggle-amber-subtle: rgba(245, 165, 36, 0.15);
+    --cleared-green: #22c55e;
+    --cleared-green-subtle: rgba(31, 157, 107, 0.15);
+    --link-blue: #4f7bff;
+    --link-blue-subtle: rgba(36, 87, 245, 0.15);
+
+    --background: var(--paper);
+    --foreground: var(--ink);
   }
 }
 
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-squiggle-red: var(--squiggle-red);
+  --color-squiggle-red-subtle: var(--squiggle-red-subtle);
+  --color-squiggle-amber: var(--squiggle-amber);
+  --color-squiggle-amber-subtle: var(--squiggle-amber-subtle);
+  --color-cleared-green: var(--cleared-green);
+  --color-cleared-green-subtle: var(--cleared-green-subtle);
+  --color-link-blue: var(--link-blue);
+  --color-link-blue-subtle: var(--link-blue-subtle);
+
+  --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-bricolage), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono), monospace;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-bricolage), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+code, pre, kbd {
+  font-family: var(--font-mono), monospace;
+}
+
+/* Wavy spellcheck underlines */
+.squiggle-red {
+  text-decoration: underline wavy var(--squiggle-red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.squiggle-amber {
+  text-decoration: underline wavy var(--squiggle-amber);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.squiggle-green {
+  text-decoration: underline wavy var(--cleared-green);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+/* Squiggle animated draw */
+@keyframes squiggleStrokeDraw {
+  0% {
+    stroke-dashoffset: 260;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-draw-squiggle {
+  stroke-dasharray: 260;
+  stroke-dashoffset: 0;
+  animation: squiggleStrokeDraw 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Popover card appear */
+@keyframes noteSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-note-appear {
+  opacity: 0;
+  animation: noteSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.85s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-draw-squiggle {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .animate-note-appear {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
