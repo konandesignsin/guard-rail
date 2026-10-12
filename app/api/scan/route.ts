@@ -150,6 +150,7 @@ export async function POST(request: Request) {
               { status: 401 }
             );
           }
+          console.error("Zipball download failed:", err.message);
         }
         return NextResponse.json(
           { error: "Could not download repository archive." },

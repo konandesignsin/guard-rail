@@ -87,7 +87,8 @@ export async function downloadRepoZipball(
     redirect: "manual",
   });
 
-  if (!response.ok) {
+  const isRedirect = response.status >= 300 && response.status < 400;
+  if (!isRedirect) {
     if (response.status === 404) {
       throw new Error("REPO_NOT_FOUND");
     }
