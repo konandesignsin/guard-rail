@@ -14,7 +14,6 @@
     "@clerk/nextjs": "^7.9.14",
     "@neondatabase/serverless": "^1.2.0",
     "drizzle-orm": "^0.45.4",
-    "guardrail-scanner": "file:../guardrail-scanner-0.1.0.tgz",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
