@@ -135,11 +135,11 @@ export function GitHubReposTab({ onScanStart, onScanComplete }: GitHubReposTabPr
 
     try {
       const existingGithub = user.externalAccounts.find(
-        (account) => account.provider === "oauth_github",
+        (account) => account.provider === "github",
       );
 
       if (existingGithub) {
-        await existingGithub.delete();
+        await existingGithub.destroy();
       }
 
       const account = await user.createExternalAccount({

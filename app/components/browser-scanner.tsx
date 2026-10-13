@@ -106,7 +106,7 @@ export function BrowserScanner() {
             placeholder={"Paste a snippet — a config file, an API route, a database policy…"}
             className="min-h-[15rem] w-full flex-1 resize-y rounded-xl border border-[var(--border)] bg-[var(--bg)]/60 p-3.5 font-mono text-[12px] leading-relaxed text-[var(--fg)] outline-none transition-colors placeholder:text-[var(--muted-subtle)] focus-visible:border-[var(--muted-subtle)] sm:text-[12.5px]"
           />
-          <p className="flex items-center gap-2 font-mono text-[11px] text-[var(--muted-subtle)]">
+          <p className="flex items-center gap-2 font-mono text-[11px] text-[var(--muted)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--cleared-green)]" aria-hidden="true" />
             Your code never leaves your browser.
           </p>

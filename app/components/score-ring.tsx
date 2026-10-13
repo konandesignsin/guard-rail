@@ -52,7 +52,7 @@ export function ScoreRing({ score, size = 72, strokeWidth = 6, className = "" }:
         <span className="font-display text-lg leading-none font-medium text-[var(--fg)] tabular-nums">
           {clamped}
         </span>
-        <span className="mt-0.5 font-mono text-[9px] tracking-wide text-[var(--muted-subtle)]">/100</span>
+        <span className="mt-0.5 font-mono text-[9px] tracking-wide text-[var(--muted)]">/100</span>
       </span>
     </div>
   );

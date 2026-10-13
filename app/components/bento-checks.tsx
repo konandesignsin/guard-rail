@@ -45,7 +45,7 @@ export function BentoChecks() {
               sk_live_••••••••••••••••
             </span>
           </div>
-          <p className="mt-2.5 font-mono text-[11px] text-[var(--muted-subtle)]">
+          <p className="mt-2.5 font-mono text-[11px] text-[var(--muted)]">
             exposed → masked
           </p>
         </div>
@@ -103,7 +103,7 @@ export function BentoChecks() {
 
         <div className="relative mt-auto flex items-center gap-4 pt-6">
           <ScoreRing score={92} size={84} strokeWidth={7} />
-          <p className="max-w-[18ch] text-[11px] leading-relaxed text-[var(--muted-subtle)]">
+          <p className="max-w-[18ch] text-[11px] leading-relaxed text-[var(--muted)]">
             Score after the flagged fixes are applied.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function BentoChecks() {
 
         <div className="relative mt-auto pt-6">
           <div className="flex items-baseline gap-2.5 font-mono text-[11px] sm:text-[12.5px]">
-            <span className="w-4 shrink-0 text-right text-[10px] text-[var(--muted-subtle)] select-none" aria-hidden="true">
+            <span className="w-4 shrink-0 text-right text-[10px] text-[var(--muted)] select-none" aria-hidden="true">
               14
             </span>
             <span className="relative inline-block px-0.5 text-[var(--fg)]">
@@ -147,7 +147,7 @@ export function BentoChecks() {
               </span>
             </span>
           </div>
-          <p className="mt-3 font-mono text-[11px] text-[var(--muted-subtle)]">
+          <p className="mt-3 font-mono text-[11px] text-[var(--muted)]">
             Debug log left in a route handler
           </p>
         </div>

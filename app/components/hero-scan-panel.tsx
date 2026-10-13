@@ -137,7 +137,7 @@ export function HeroScanPanel() {
                 return (
                   <div key={index} className="flex items-baseline whitespace-pre">
                     <span
-                      className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted-subtle)] select-none"
+                      className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted)] select-none"
                       aria-hidden="true"
                     >
                       {index + 1}
@@ -190,8 +190,8 @@ export function HeroScanPanel() {
                       <span
                         className={
                           line.code.startsWith("//") || line.code.startsWith("--")
-                            ? "px-0.5 text-[var(--muted-subtle)] opacity-60 italic"
-                            : "px-0.5 text-[var(--muted)] opacity-60"
+                            ? "px-0.5 text-[var(--muted)] italic"
+                            : "px-0.5 text-[var(--muted)]"
                         }
                       >
                         {line.code || "\u00A0"}
@@ -241,7 +241,7 @@ export function HeroScanPanel() {
               <span className="font-mono text-[11px] text-[var(--muted)]">
                 {RISKS.length} findings · plain English, no jargon
               </span>
-              <p className="max-w-[46ch] text-[11px] leading-relaxed text-[var(--muted-subtle)]">
+              <p className="max-w-[46ch] text-[11px] leading-relaxed text-[var(--muted)]">
                 Hover a red squiggle for what went wrong and the exact line to change.
               </p>
             </>

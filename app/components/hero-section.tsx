@@ -76,7 +76,7 @@ export function HeroSection({ authButtons }: HeroSectionProps) {
           </div>
 
           <p
-            className="rise mt-6 flex items-center gap-2 font-mono text-[11px] text-[var(--muted-subtle)]"
+            className="rise mt-6 flex items-center gap-2 font-mono text-[11px] text-[var(--muted)]"
             style={{ "--rise-delay": "260ms" } as React.CSSProperties}
           >
             <span className="h-1 w-1 rounded-full bg-[var(--muted-subtle)]" aria-hidden="true" />

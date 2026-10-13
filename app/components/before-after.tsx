@@ -67,7 +67,7 @@ function CodeBlock({ lines, tone }: { lines: CodeLine[]; tone: "before" | "after
                   : ""
               }`}
             >
-              <span className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted-subtle)] select-none">
+              <span className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted)] select-none" aria-hidden="true">
                 {index + 1}
               </span>
               <span className={line.changed ? "text-[var(--fg)]" : "text-[var(--muted)]"}>
