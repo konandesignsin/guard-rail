@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useReverification } from "@clerk/nextjs";
 
 interface GitHubRepo {
   full_name: string;
@@ -32,6 +32,15 @@ export function GitHubReposTab({ onScanStart, onScanComplete }: GitHubReposTabPr
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState("");
+
+  const createExternalAccount = useReverification(
+    (params: { strategy: "oauth_github"; redirectUrl: string }) =>
+      user?.createExternalAccount(params),
+  );
+
+  const destroyExternalAccount = useReverification(
+    (account: { destroy: () => Promise<void> }) => account.destroy(),
+  );
 
   useEffect(() => {
     loadRepos();
@@ -139,10 +148,10 @@ export function GitHubReposTab({ onScanStart, onScanComplete }: GitHubReposTabPr
       );
 
       if (existingGithub) {
-        await existingGithub.destroy();
+        await destroyExternalAccount(existingGithub);
       }
 
-      const account = await user.createExternalAccount({
+      const account = await createExternalAccount({
         strategy: "oauth_github",
         redirectUrl: `${window.location.origin}/dashboard`,
       });
@@ -154,7 +163,16 @@ export function GitHubReposTab({ onScanStart, onScanComplete }: GitHubReposTabPr
         setConnectError("We couldn't open GitHub. Please try again.");
         setConnectLoading(false);
       }
-    } catch {
+    } catch (err: unknown) {
+      const clerkError = err as { errors?: Array<{ code?: string; message?: string }> };
+      const errorCode = clerkError.errors?.[0]?.code;
+
+      if (errorCode === "reverification_cancelled") {
+        setConnectLoading(false);
+        return;
+      }
+
+      console.error("Clerk error:", clerkError.errors?.[0]?.code, clerkError.errors?.[0]?.message);
       setConnectError("We couldn't open GitHub. Please try again.");
       setConnectLoading(false);
     }
