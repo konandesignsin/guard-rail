@@ -74,9 +74,23 @@ export function HeaderNav({ authSlot }: HeaderNavProps) {
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="inline-block py-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                    className="nav-link-squiggle relative inline-block py-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)] focus-visible:outline-none"
                   >
-                    {link.label}
+                    <span>{link.label}</span>
+                    <svg
+                      viewBox="0 0 100 4"
+                      preserveAspectRatio="none"
+                      fill="none"
+                      className="nav-squiggle-svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M 0 2 Q 12.5 0, 25 2 T 50 2 T 75 2 T 100 2"
+                        stroke="var(--squiggle-red)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
                   </a>
                 </li>
               ))}

@@ -1,14 +1,47 @@
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { HeaderNav } from "@/app/components/header-nav";
 import { HeroSection } from "@/app/components/hero-section";
-import { BrowserScanner } from "@/app/components/browser-scanner";
-import { BentoChecks } from "@/app/components/bento-checks";
-import { BeforeAfter } from "@/app/components/before-after";
-import { FaqSection } from "@/app/components/faq-section";
-import { ClosingCta } from "@/app/components/closing-cta";
+import { SquiggleDivider } from "@/app/components/squiggle";
 import { SiteFooter } from "@/app/components/site-footer";
+
+// Lazy-load below-the-fold components for performance
+const BrowserScanner = dynamic(
+  () => import("@/app/components/browser-scanner").then((mod) => mod.BrowserScanner),
+  {
+    loading: () => <div className="skeleton h-80 rounded-2xl w-full" aria-hidden="true" />,
+  }
+);
+
+const BentoChecks = dynamic(
+  () => import("@/app/components/bento-checks").then((mod) => mod.BentoChecks),
+  {
+    loading: () => <div className="skeleton h-96 rounded-2xl w-full" aria-hidden="true" />,
+  }
+);
+
+const BeforeAfter = dynamic(
+  () => import("@/app/components/before-after").then((mod) => mod.BeforeAfter),
+  {
+    loading: () => <div className="skeleton h-96 rounded-2xl w-full" aria-hidden="true" />,
+  }
+);
+
+const FaqSection = dynamic(
+  () => import("@/app/components/faq-section").then((mod) => mod.FaqSection),
+  {
+    loading: () => <div className="skeleton h-64 rounded-2xl w-full" aria-hidden="true" />,
+  }
+);
+
+const ClosingCta = dynamic(
+  () => import("@/app/components/closing-cta").then((mod) => mod.ClosingCta),
+  {
+    loading: () => <div className="skeleton h-48 rounded-2xl w-full" aria-hidden="true" />,
+  }
+);
 
 export default function Home() {
   return (
@@ -38,8 +71,11 @@ export default function Home() {
           }
         />
 
+        {/* Subtle Squiggle Divider */}
+        <SquiggleDivider className="opacity-40" />
+
         {/* Try it now — runs the real engine in the browser */}
-        <section id="try-it" className="border-t border-[var(--border)] py-[var(--section-y)]">
+        <section id="try-it" className="py-[var(--section-y)]">
           <div className="mx-auto max-w-6xl px-6">
             <header className="max-w-2xl">
               <p className="font-mono text-[11px] tracking-wide text-[var(--squiggle-red)] uppercase">
@@ -60,8 +96,11 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Subtle Squiggle Divider */}
+        <SquiggleDivider className="opacity-40" />
+
         {/* What we check */}
-        <section id="checks" className="border-t border-[var(--border)] py-[var(--section-y)]">
+        <section id="checks" className="py-[var(--section-y)]">
           <div className="mx-auto max-w-6xl px-6">
             <header className="max-w-2xl">
               <p className="font-mono text-[11px] tracking-wide text-[var(--muted)] uppercase">
@@ -82,8 +121,11 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Subtle Squiggle Divider */}
+        <SquiggleDivider className="opacity-40" />
+
         {/* Before / after */}
-        <section id="before-after" className="border-t border-[var(--border)] py-[var(--section-y)]">
+        <section id="before-after" className="py-[var(--section-y)]">
           <div className="mx-auto max-w-6xl px-6">
             <header className="max-w-2xl">
               <p className="font-mono text-[11px] tracking-wide text-[var(--muted)] uppercase">
@@ -151,7 +193,7 @@ async function HeroAuthButtons() {
   return (
     <Link
       href={user ? "/dashboard" : "/sign-up"}
-      className="inline-flex items-center rounded-full bg-[var(--fg)] px-7 py-3 text-sm font-medium text-[var(--bg)] shadow-md shadow-black/20 transition-colors hover:bg-white"
+      className="inline-flex items-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--bg)] shadow-md shadow-black/20 transition-all hover:bg-neutral-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] focus-visible:outline-none"
     >
       {user ? "Open dashboard" : "Scan my app"}
     </Link>

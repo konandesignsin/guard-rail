@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
@@ -21,6 +23,32 @@ export default function DashboardPage() {
 }
 
 async function DashboardDataLoader() {
+  try {
+    return await DashboardContent();
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("[dashboard] failed to load dashboard data:", error);
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-5 text-[var(--fg)]">
+        <div className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-sm">
+          <h1 className="font-display text-lg font-medium">We couldn&apos;t load your dashboard</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Your scans are safe. Please try again in a moment.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-5 inline-flex rounded-md bg-[var(--fg)] px-4 py-2 text-xs font-medium text-[var(--bg)] transition-colors hover:bg-white"
+          >
+            Try again
+          </Link>
+        </div>
+      </div>
+    );
+  }
+}
+
+async function DashboardContent() {
   const user = await getOrCreateUser();
   const clerkUser = await currentUser();
 

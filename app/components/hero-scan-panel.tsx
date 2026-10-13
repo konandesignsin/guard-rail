@@ -1,251 +1,383 @@
 "use client";
 
-import { useState } from "react";
-
-type Severity = "high" | "medium";
+import { useState, useEffect, useRef } from "react";
 
 interface Risk {
-  /** Offending text inside the line; used to place the squiggle + ignition timing. */
+  id: string;
   token: string;
-  severity: Severity;
+  severity: "high" | "medium";
   label: string;
   note: string;
-  fix: string;
+  fixedCode: string;
 }
 
 interface ScanLine {
-  code: string;
+  initialCode: string;
+  fixedCode?: string;
   risk?: Risk;
 }
 
 const LINES: ScanLine[] = [
-  { code: 'import { createClient } from "@supabase/supabase-js";' },
-  { code: "" },
-  { code: "// Talks to the database straight from the browser" },
-  { code: "export const supabase = createClient(" },
-  { code: "  process.env.NEXT_PUBLIC_SUPABASE_URL!," },
+  { initialCode: 'import { createClient } from "@supabase/supabase-js";' },
+  { initialCode: "" },
+  { initialCode: "// Talks to database directly from the client bundle" },
+  { initialCode: "export const supabase = createClient(" },
+  { initialCode: "  process.env.NEXT_PUBLIC_SUPABASE_URL!," },
   {
-    code: '  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.8Kd2"',
+    initialCode: '  "eyJhbGciOiJIUzI1NiIsInR5cCI...EXAMPLE_NOT_REAL_ROLE_KEY"',
+    fixedCode: "  process.env.SUPABASE_SERVICE_ROLE_KEY!",
     risk: {
-      token: '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.8Kd2"',
+      id: "supabase-key",
+      token: '"eyJhbGciOiJIUzI1NiIsInR5cCI...EXAMPLE_NOT_REAL_ROLE_KEY"',
       severity: "high",
-      label: "Admin database key, shipped to the browser",
-      note:
-        "This is the master key for your database. It ignores every security rule you set. Anyone who opens your site can copy it and read, change, or delete everything.",
-      fix: "Use the public anon key in the browser and keep this one on the server.",
+      label: "Admin database key leaked to client",
+      note: "Bypasses every database security rule. Anyone can read, alter, or drop customer tables.",
+      fixedCode: "process.env.SUPABASE_SERVICE_ROLE_KEY!",
     },
   },
-  { code: ");" },
-  { code: "" },
+  { initialCode: ");" },
+  { initialCode: "" },
   {
-    code: 'export const stripe = new Stripe("sk_live_51Q8hT4Lk93mNbZq0");',
+    initialCode: 'export const stripe = new Stripe("sk_live_EXAMPLE_NOT_REAL");',
+    fixedCode: 'export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);',
     risk: {
-      token: '"sk_live_51Q8hT4Lk93mNbZq0"',
+      id: "stripe-key",
+      token: '"sk_live_EXAMPLE_NOT_REAL"',
       severity: "high",
-      label: "Live payment key in your JavaScript",
-      note:
-        "Your real Stripe key is baked into the page. Someone can use it to issue refunds or read customer payment details without ever logging in.",
-      fix: "Move it to a server-only environment variable and call Stripe from a route handler.",
+      label: "Live secret payment API key",
+      note: "Allows unauthorized payment requests, customer data inspection, and unauthenticated refunds.",
+      fixedCode: "process.env.STRIPE_SECRET_KEY!",
     },
   },
-  { code: "" },
+  { initialCode: "" },
   {
-    code: '-- create policy "read_orders" on orders for all using (true);',
+    initialCode: 'create policy "read_orders" on orders for all using (true);',
+    fixedCode: 'create policy "read_orders" on orders for all using (auth.uid() = user_id);',
     risk: {
+      id: "open-rls",
       token: "using (true)",
       severity: "medium",
-      label: "Rule lets everyone read every row",
-      note:
-        "This rule says yes to every visitor. If that table holds customer data, anyone can read it. Fine for public data, risky for private data.",
-      fix: "Scope it to the signed-in user: using (auth.uid() = user_id).",
+      label: "Open security policy evaluates to true",
+      note: "Allows any unauthenticated user on the internet to query every single customer record.",
+      fixedCode: "using (auth.uid() = user_id)",
     },
   },
-  { code: "" },
-  { code: "export async function refund(chargeId: string) {" },
-  { code: "  return stripe.refunds.create({ charge: chargeId });" },
-  { code: "}" },
 ];
 
-/** Longest rendered line, used to convert a column into a beam-arrival delay. */
-const LONGEST_LINE = LINES.reduce((longest, line) => Math.max(longest, line.code.length), 1);
-const SWEEP_SECONDS = 1.6;
-
-const RISKS = LINES.filter((line) => line.risk).map((line) => {
-  const code = line.code;
-  const risk = line.risk as Risk;
-  const column = Math.max(0, code.indexOf(risk.token));
-  const endColumn = column + risk.token.length;
-  return {
-    risk,
-    /** Fraction of the panel width the beam travels before this line ignites. */
-    arrival: Math.min(0.96, endColumn / LONGEST_LINE),
-  };
-});
-
-/**
- * Faint code lines with one bright vertical beam that sweeps across once on load.
- * Red squiggles ignite as the beam passes; the note panel explains whichever
- * finding is hovered, focused, or tapped.
- *
- * The sweep is pure CSS (gated behind `prefers-reduced-motion: no-preference`),
- * so it starts with the first paint and needs no JS.
- */
 export function HeroScanPanel() {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [typedLineCount, setTypedLineCount] = useState(0);
+  const [activeSquiggles, setActiveSquiggles] = useState<number[]>([]);
+  const [findingCount, setFindingCount] = useState(0);
+  const [showFixButton, setShowFixButton] = useState(false);
+  const [isFixed, setIsFixed] = useState(false);
+  const [hoveredRisk, setHoveredRisk] = useState<Risk | null>(null);
 
-  const active = activeIndex === null ? null : RISKS[activeIndex].risk;
-  const highCount = RISKS.filter((item) => item.risk.severity === "high").length;
-  const mediumCount = RISKS.length - highCount;
+  // Mouse spotlight coordinates and 3D card tilt
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const risksInOrder = LINES.map((l, idx) => (l.risk ? { idx, risk: l.risk } : null)).filter(Boolean) as {
+    idx: number;
+    risk: Risk;
+  }[];
+
+  function resetAndPlay() {
+    // Check prefers-reduced-motion
+    const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReducedMotion) {
+      setTypedLineCount(LINES.length);
+      setActiveSquiggles([5, 8, 10]);
+      setFindingCount(3);
+      setShowFixButton(true);
+      setIsFixed(false);
+      return;
+    }
+
+    setTypedLineCount(0);
+    setActiveSquiggles([]);
+    setFindingCount(0);
+    setShowFixButton(false);
+    setIsFixed(false);
+
+    // Step 1: Type in lines
+    let curLine = 0;
+    const typeInterval = setInterval(() => {
+      curLine++;
+      setTypedLineCount(curLine);
+      if (curLine >= LINES.length) {
+        clearInterval(typeInterval);
+
+        // Step 2: Draw squiggles one by one
+        setTimeout(() => {
+          setActiveSquiggles([5]);
+          setFindingCount(1);
+
+          setTimeout(() => {
+            setActiveSquiggles([5, 8]);
+            setFindingCount(2);
+
+            setTimeout(() => {
+              setActiveSquiggles([5, 8, 10]);
+              setFindingCount(3);
+
+              // Step 4: After a pause, show fix button
+              setTimeout(() => {
+                setShowFixButton(true);
+
+                // Auto-play fix after 4s unless clicked earlier
+                if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
+                autoPlayTimerRef.current = setTimeout(() => {
+                  applyFixes();
+                }, 4000);
+              }, 600);
+            }, 450);
+          }, 450);
+        }, 300);
+      }
+    }, 70);
+  }
+
+  function applyFixes() {
+    if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
+    setIsFixed(true);
+    setActiveSquiggles([]);
+    setFindingCount(0);
+    setShowFixButton(false);
+  }
+
+  useEffect(() => {
+    resetAndPlay();
+    return () => {
+      if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
+    };
+  }, []);
+
+  // Handle card tilt and spotlight on mouse move
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!cardRef.current) return;
+    const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
+    setMousePos({ x: xPercent, y: yPercent });
+
+    // Slight card tilt (max 4 degrees)
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -3.5;
+    const rotateY = ((x - centerX) / centerX) * 3.5;
+    setTilt({ rx: rotateX, ry: rotateY });
+  }
+
+  function handleMouseLeave() {
+    setTilt({ rx: 0, ry: 0 });
+    setHoveredRisk(null);
+  }
 
   return (
-    <div className="relative w-full">
-      {/* Soft glow behind the card */}
+    <div className="relative w-full select-none" style={{ perspective: "1000px" }}>
+      {/* Soft red glow behind the card */}
       <div
-        className="pointer-events-none absolute -inset-3 rounded-[1.75rem] glow-soft"
+        className="pointer-events-none absolute -inset-6 rounded-3xl bg-[var(--squiggle-red)]/15 blur-2xl transition-opacity duration-700"
+        style={{ opacity: isFixed ? 0.05 : 0.8 }}
         aria-hidden="true"
       />
 
-      <div className="hero-scan relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 shadow-2xl shadow-black/40 backdrop-blur-sm">
-        {/* Window chrome */}
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
+      {/* Main Hero Card with 3D Tilt and Spotlight */}
+      <div
+        ref={cardRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
+          transition: "transform 0.15s ease-out",
+        }}
+        className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl shadow-black/60 will-change-transform"
+      >
+        {/* Cursor spotlight overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(circle 280px at ${mousePos.x}% ${mousePos.y}%, rgba(255, 255, 255, 0.06), transparent 80%)`,
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Faint noise/grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-15"
+          style={{
+            backgroundImage: `radial-gradient(var(--border) 1px, transparent 1px)`,
+            backgroundSize: "16px 16px",
+            maskImage: "radial-gradient(ellipse at center, black 40%, transparent 80%)",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Window Chrome Header */}
+        <div className="relative z-10 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="flex gap-1.5" aria-hidden="true">
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
             </span>
             <span className="truncate font-mono text-[11px] text-[var(--muted)]">lib/supabase.ts</span>
-          </div>
-          <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--squiggle-red)_35%,transparent)] bg-[var(--squiggle-red-subtle)] px-2.5 py-0.5 font-sans text-[11px] font-medium text-[var(--squiggle-red)]">
-            {highCount} high · {mediumCount} medium
-          </span>
-        </div>
-
-        {/* Code body */}
-        <div className="relative px-3 py-4 sm:px-4">
-          <p className="sr-only">
-            Example scan of a file with three findings: an exposed admin key on line 6, a live payment
-            key on line 9, and an open database rule on line 11.
-          </p>
-
-          <div className="relative overflow-x-auto">
-            <div className="relative min-w-[19rem] font-mono text-[11px] leading-[1.9] sm:text-[12.5px]">
-              {LINES.map((line, index) => {
-                const riskIndex = RISKS.findIndex((item) => item.risk === line.risk);
-                const isRisk = riskIndex !== -1;
-
-                return (
-                  <div key={index} className="flex items-baseline whitespace-pre">
-                    <span
-                      className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted)] select-none"
-                      aria-hidden="true"
-                    >
-                      {index + 1}
-                    </span>
-
-                    {isRisk ? (
-                      <button
-                        type="button"
-                        onMouseEnter={() => setActiveIndex(riskIndex)}
-                        onFocus={() => setActiveIndex(riskIndex)}
-                        onClick={() => setActiveIndex(riskIndex)}
-                        onMouseLeave={() => setActiveIndex(null)}
-                        onBlur={() => setActiveIndex(null)}
-                        aria-describedby="hero-scan-note"
-                        className={`relative inline-block cursor-pointer rounded-sm px-0.5 text-left transition-colors ${
-                          line.risk?.severity === "high"
-                            ? "text-[var(--fg)] hover:bg-[var(--squiggle-red-subtle)]"
-                            : "text-[var(--fg)] hover:bg-[var(--squiggle-amber-subtle)]"
-                        } ${activeIndex === riskIndex ? "bg-[var(--squiggle-red-subtle)]" : ""}`}
-                      >
-                        {line.code}
-                        <span className="pointer-events-none absolute inset-x-0 -bottom-[3px] h-1.5" aria-hidden="true">
-                          <svg
-                            viewBox="0 0 100 6"
-                            preserveAspectRatio="none"
-                            fill="none"
-                            className="h-full w-full overflow-visible"
-                          >
-                            <path
-                              className="squiggle-path"
-                              pathLength={1}
-                              d="M 0 3 Q 5 0, 10 3 T 20 3 T 30 3 T 40 3 T 50 3 T 60 3 T 70 3 T 80 3 T 90 3 T 100 3"
-                              stroke={
-                                line.risk?.severity === "high"
-                                  ? "var(--squiggle-red)"
-                                  : "var(--squiggle-amber)"
-                              }
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              style={
-                                {
-                                  "--draw-delay": `${(RISKS[riskIndex].arrival * SWEEP_SECONDS).toFixed(2)}s`,
-                                } as React.CSSProperties
-                              }
-                            />
-                          </svg>
-                        </span>
-                      </button>
-                    ) : (
-                      <span
-                        className={
-                          line.code.startsWith("//") || line.code.startsWith("--")
-                            ? "px-0.5 text-[var(--muted)] italic"
-                            : "px-0.5 text-[var(--muted)]"
-                        }
-                      >
-                        {line.code || "\u00A0"}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <span className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.2 text-[9px] font-mono uppercase tracking-wider text-[var(--muted-subtle)]">
+              Example
+            </span>
           </div>
 
-          {/* The single bright scan beam */}
-          <div className="scan-beam pointer-events-none absolute inset-0 w-full" aria-hidden="true">
-            <span className="absolute inset-y-0 left-0 w-10 -translate-x-1/2 bg-[var(--squiggle-red)] opacity-25 blur-xl" />
-            <span className="absolute inset-y-0 left-0 w-[2px] -translate-x-1/2 bg-[var(--squiggle-red)] shadow-[0_0_18px_4px_var(--squiggle-red-glow)]" />
-          </div>
-        </div>
-
-        {/* Plain-English note panel (fixed height, so nothing above it ever shifts) */}
-        <div
-          id="hero-scan-note"
-          aria-live="polite"
-          className="flex min-h-[7.5rem] flex-col justify-center gap-1.5 border-t border-[var(--border)] bg-[var(--bg)]/70 px-4 py-3"
-        >
-          {active ? (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase ${
-                    active.severity === "high"
-                      ? "bg-[var(--squiggle-red-subtle)] text-[var(--squiggle-red)]"
-                      : "bg-[var(--squiggle-amber-subtle)] text-[var(--squiggle-amber)]"
-                  }`}
-                >
-                  {active.severity}
-                </span>
-                <span className="font-sans text-xs font-semibold text-[var(--fg)]">{active.label}</span>
-              </div>
-              <p className="max-w-[52ch] text-[11px] leading-relaxed text-[var(--muted)]">{active.note}</p>
-              <p className="font-mono text-[11px] leading-relaxed text-[var(--fg)]">
-                <span className="font-sans font-semibold">Fix: </span>
-                {active.fix}
-              </p>
-            </>
-          ) : (
-            <>
-              <span className="font-mono text-[11px] text-[var(--muted)]">
-                {RISKS.length} findings · plain English, no jargon
+          <div className="flex items-center gap-2">
+            {/* Counter ticking up */}
+            {isFixed ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--cleared-green)]/30 bg-[var(--cleared-green-subtle)] px-2.5 py-0.5 text-[11px] font-mono font-medium text-[var(--cleared-green)] transition-all">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--cleared-green)]" />
+                0 findings
               </span>
-              <p className="max-w-[46ch] text-[11px] leading-relaxed text-[var(--muted)]">
-                Hover a red squiggle for what went wrong and the exact line to change.
-              </p>
-            </>
-          )}
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] px-2.5 py-0.5 text-[11px] font-mono font-medium text-[var(--squiggle-red)] transition-all">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--squiggle-red)] animate-pulse" />
+                {findingCount} {findingCount === 1 ? "finding" : "findings"}
+              </span>
+            )}
+
+            {/* Replay Link */}
+            {isFixed && (
+              <button
+                type="button"
+                onClick={resetAndPlay}
+                className="text-[11px] font-mono text-[var(--muted)] hover:text-[var(--fg)] underline cursor-pointer transition-colors"
+              >
+                Replay
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Code Lines Body */}
+        <div className="relative z-10 px-4 py-4 min-h-[340px]">
+          <div className="font-mono text-[11px] sm:text-[12.5px] leading-[1.85] overflow-x-auto">
+            {LINES.slice(0, typedLineCount).map((line, idx) => {
+              const hasRisk = activeSquiggles.includes(idx) && line.risk;
+              const isFixedLine = isFixed && line.fixedCode;
+              const displayCode = isFixedLine ? line.fixedCode! : line.initialCode;
+
+              return (
+                <div key={idx} className="flex items-baseline whitespace-pre relative group">
+                  <span className="w-6 shrink-0 pr-2 text-right text-[10px] text-[var(--muted-subtle)] select-none">
+                    {idx + 1}
+                  </span>
+
+                  {/* Render risky line with squiggle and chip */}
+                  {hasRisk && line.risk ? (
+                    <div
+                      onMouseEnter={() => setHoveredRisk(line.risk!)}
+                      onMouseLeave={() => setHoveredRisk(null)}
+                      className="relative inline-block cursor-help rounded px-0.5"
+                    >
+                      <span className="text-[var(--fg)] font-medium">{displayCode}</span>
+
+                      {/* Small severity chip */}
+                      <span
+                        className={`ml-2 inline-flex items-center rounded px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase tracking-wider ${
+                          line.risk.severity === "high"
+                            ? "bg-[var(--squiggle-red-subtle)] text-[var(--squiggle-red)] border border-[var(--squiggle-red)]/30"
+                            : "bg-[var(--squiggle-amber-subtle)] text-[var(--squiggle-amber)] border border-[var(--squiggle-amber)]/30"
+                        }`}
+                      >
+                        {line.risk.severity}
+                      </span>
+
+                      {/* SVG Squiggle drawing under the risky text */}
+                      <span className="pointer-events-none absolute inset-x-0 -bottom-[3px] h-1.5" aria-hidden="true">
+                        <svg
+                          viewBox="0 0 100 6"
+                          preserveAspectRatio="none"
+                          fill="none"
+                          className="h-full w-full overflow-visible"
+                        >
+                          <path
+                            d="M 0 3 Q 5 0, 10 3 T 20 3 T 30 3 T 40 3 T 50 3 T 60 3 T 70 3 T 80 3 T 90 3 T 100 3"
+                            stroke={
+                              line.risk.severity === "high"
+                                ? "var(--squiggle-red)"
+                                : "var(--squiggle-amber)"
+                            }
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            className="hero-squiggle-draw"
+                          />
+                        </svg>
+                      </span>
+
+                      {/* Hover Tooltip with plain-English reason */}
+                      {hoveredRisk?.id === line.risk.id && (
+                        <div
+                          role="tooltip"
+                          className="absolute left-8 bottom-full mb-2 w-64 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--fg)] shadow-xl z-50 pointer-events-none transition-all leading-relaxed"
+                        >
+                          <p className="font-semibold font-sans text-[var(--fg)]">{line.risk.label}</p>
+                          <p className="text-[var(--muted)] font-sans text-[11px] mt-1">{line.risk.note}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span
+                      className={`px-0.5 transition-colors duration-300 ${
+                        isFixedLine
+                          ? "text-[var(--cleared-green)] font-semibold"
+                          : displayCode.startsWith("//")
+                          ? "text-[var(--muted-subtle)] italic"
+                          : "text-[var(--muted)]"
+                      }`}
+                    >
+                      {displayCode || "\u00A0"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer Bar: Fix Button or Clean Status */}
+        <div className="relative z-10 flex items-center justify-between border-t border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3">
+          <div className="text-xs">
+            {isFixed ? (
+              <span className="flex items-center gap-1.5 font-sans font-medium text-[var(--cleared-green)]">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Fixed & secured. Keys stored in process.env.
+              </span>
+            ) : (
+              <span className="font-sans text-[11px] text-[var(--muted)]">
+                Hover any squiggle to read why it matters.
+              </span>
+            )}
+          </div>
+
+          <div>
+            {showFixButton && !isFixed && (
+              <button
+                type="button"
+                onClick={applyFixes}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--fg)] hover:opacity-90 text-[var(--bg)] px-3.5 py-1 text-xs font-semibold shadow-sm cursor-pointer transition-all animate-bounce"
+              >
+                <span>Fix automatically</span>
+                <span className="text-[10px]">&rarr;</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

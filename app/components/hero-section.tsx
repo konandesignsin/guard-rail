@@ -7,30 +7,36 @@ interface HeroSectionProps {
 
 export function HeroSection({ authButtons }: HeroSectionProps) {
   return (
-    <section className="relative overflow-hidden">
-      {/* Soft ambient glow behind the hero */}
+    <section className="relative overflow-hidden min-h-[calc(100vh-var(--nav-h))] flex flex-col justify-between pt-24 pb-12">
+      {/* Soft red glow behind the hero */}
       <div
-        className="pointer-events-none absolute top-0 left-1/2 h-[26rem] w-[38rem] -translate-x-1/2 -translate-y-1/3 glow-soft"
+        className="pointer-events-none absolute top-1/4 left-1/2 h-[32rem] w-[46rem] -translate-x-1/2 -translate-y-1/2 bg-[var(--squiggle-red)]/10 blur-[100px] rounded-full"
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-10 pb-16 lg:grid-cols-12 lg:gap-10 lg:pt-16 lg:pb-24">
-        {/* Left: the words */}
-        <div className="flex flex-col items-start lg:col-span-6">
-          <p className="rise inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-1 text-[11px] text-[var(--muted)]">
+      {/* Main 2-column hero container vertically centered */}
+      <div className="relative mx-auto my-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 lg:grid-cols-12 lg:gap-12 w-full">
+        {/* Left Column: The Words */}
+        <div className="flex flex-col items-start lg:col-span-6 space-y-6">
+          <div className="rise inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-subtle)] px-3.5 py-1 text-xs text-[var(--muted)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--squiggle-red)]" aria-hidden="true" />
-            For anyone shipping code written with AI
-          </p>
+            <span>For anyone shipping code written with AI</span>
+          </div>
 
           <h1
-            className="rise mt-6 font-display text-[length:var(--step-4)] leading-[1.04] font-light tracking-tight text-balance text-[var(--fg)]"
-            style={{ "--rise-delay": "60ms" } as React.CSSProperties}
+            className="rise font-display font-semibold text-[var(--fg)] leading-[1.02] text-balance"
+            style={{
+              fontSize: "clamp(3.25rem, 7vw, 6.5rem)",
+              letterSpacing: "-0.03em",
+              fontWeight: 600,
+              ["--rise-delay" as string]: "60ms",
+            }}
           >
             Find the{" "}
             <span className="relative inline-block">
               leaked key
               <svg
-                className="absolute inset-x-0 -bottom-[0.08em] h-[0.12em] w-full overflow-visible"
+                className="absolute inset-x-0 -bottom-[0.06em] h-[0.14em] w-full overflow-visible"
                 viewBox="0 0 100 4"
                 fill="none"
                 preserveAspectRatio="none"
@@ -39,8 +45,9 @@ export function HeroSection({ authButtons }: HeroSectionProps) {
                 <path
                   d="M 0 2 Q 10 0, 20 2 T 40 2 T 60 2 T 80 2 T 100 2"
                   stroke="var(--squiggle-red)"
-                  strokeWidth="3"
+                  strokeWidth="3.2"
                   strokeLinecap="round"
+                  className="hero-squiggle-draw"
                 />
               </svg>
             </span>{" "}
@@ -48,20 +55,20 @@ export function HeroSection({ authButtons }: HeroSectionProps) {
           </h1>
 
           <p
-            className="rise mt-6 max-w-[46ch] text-[length:var(--step-1)] leading-relaxed text-[var(--muted)]"
-            style={{ "--rise-delay": "140ms" } as React.CSSProperties}
+            className="rise text-[20px] leading-relaxed text-[var(--muted)] max-w-[46ch]"
+            style={{ ["--rise-delay" as string]: "140ms" }}
           >
             It reads your code and points at the exact line — in plain English, with the fix.
           </p>
 
           <div
-            className="rise mt-8 flex flex-wrap items-center gap-3"
-            style={{ "--rise-delay": "200ms" } as React.CSSProperties}
+            className="rise flex flex-wrap items-center gap-3 pt-2"
+            style={{ ["--rise-delay" as string]: "200ms" }}
           >
             {authButtons ?? (
               <Link
                 href="/sign-up"
-                className="inline-flex items-center rounded-full bg-[var(--fg)] px-7 py-3 text-sm font-medium text-[var(--bg)] shadow-md shadow-black/20 transition-colors hover:bg-white"
+                className="inline-flex items-center rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--bg)] shadow-md shadow-black/20 transition-all hover:bg-neutral-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] focus-visible:outline-none"
               >
                 Scan my app
               </Link>
@@ -69,25 +76,33 @@ export function HeroSection({ authButtons }: HeroSectionProps) {
 
             <Link
               href="#try-it"
-              className="inline-flex items-center rounded-full border border-[var(--border)] bg-transparent px-7 py-3 text-sm font-medium text-[var(--fg)] transition-colors hover:border-[var(--muted-subtle)] hover:bg-[var(--surface-subtle)]"
+              className="inline-flex items-center rounded-full border border-[var(--border)] bg-transparent px-8 py-3.5 text-sm font-medium text-[var(--fg)] transition-all hover:border-[var(--muted)] hover:bg-[var(--surface-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--fg)] focus-visible:outline-none"
             >
               Try an example
             </Link>
           </div>
 
           <p
-            className="rise mt-6 flex items-center gap-2 font-mono text-[11px] text-[var(--muted)]"
-            style={{ "--rise-delay": "260ms" } as React.CSSProperties}
+            className="rise flex items-center gap-2 font-mono text-[14px] text-[var(--muted)]"
+            style={{ ["--rise-delay" as string]: "260ms" }}
           >
-            <span className="h-1 w-1 rounded-full bg-[var(--muted-subtle)]" aria-hidden="true" />
-            The in-browser check needs no account.
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted-subtle)]" aria-hidden="true" />
+            <span>The in-browser check needs no account.</span>
           </p>
         </div>
 
-        {/* Right: the scanned file */}
-        <div className="w-full lg:col-span-6">
+        {/* Right Column: Hero Card */}
+        <div className="w-full lg:col-span-6 flex items-center justify-center">
           <HeroScanPanel />
         </div>
+      </div>
+
+      {/* Quiet scroll cue at the bottom */}
+      <div className="mx-auto flex flex-col items-center gap-2 text-xs font-mono text-[var(--muted-subtle)] select-none pt-8">
+        <span>scroll to explore</span>
+        <svg className="h-4 w-4 animate-bounce text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
       </div>
     </section>
   );

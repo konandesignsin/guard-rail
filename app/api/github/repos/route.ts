@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unstable_rethrow } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getGitHubToken, listUserRepos } from "@/lib/github-api";
 
@@ -57,6 +58,7 @@ export async function GET() {
 
     return NextResponse.json({ repos });
   } catch (err) {
+    unstable_rethrow(err);
     console.error("GitHub repos API error:", err);
     return NextResponse.json(
       { error: "SERVER_ERROR", message: "Something went wrong on our end." },
