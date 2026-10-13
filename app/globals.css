@@ -464,6 +464,25 @@ details[open] > summary .faq-chevron {
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Slow continuous marquee for finding categories */
+  @keyframes gr-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: gr-marquee 35s linear infinite;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
 }
 
 /* -------------------------------------------------------------------------

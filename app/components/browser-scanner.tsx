@@ -15,11 +15,11 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  "https://xyzcompany.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiZXhwIjoxMjN9.8Kd2nQ"
+  "https://example-project.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiZXhwIjoxMjN9.EXAMPLE_NOT_REAL_KEY"
 );
 
-export const stripe = new Stripe("sk_live_51Q8hT4Lk93mNbZq0Rh1p");
+export const stripe = new Stripe("sk_live_EXAMPLE_NOT_REAL_STRIPE_KEY");
 
 export const isAdmin = localStorage.getItem("isAdmin");
 
