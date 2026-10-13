@@ -68,15 +68,19 @@ function isTextFile(name: string): boolean {
   return TEXT_EXTENSIONS.has(ext) || ext === ".json" || ext === ".lock";
 }
 
-export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
+export async function downloadZipBuffer(
+  zipUrl: string,
+  options?: { headers?: Record<string, string>; timeoutMs?: number }
+): Promise<Uint8Array> {
+  const timeoutMs = options?.timeoutMs ?? TIMEOUT_MS;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
     response = await fetch(zipUrl, {
       signal: controller.signal,
-      headers: { Accept: "application/zip" },
+      headers: { Accept: "application/zip", ...(options?.headers ?? {}) },
       redirect: "follow",
     });
   } catch (err: unknown) {
@@ -106,6 +110,10 @@ export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
     throw new Error("This repository is larger than 50 MB and can't be scanned.");
   }
 
+  return buffer;
+}
+
+export function processZipBuffer(buffer: Uint8Array): FileInput[] {
   let entries: Record<string, Uint8Array>;
   try {
     entries = unzipSync(buffer);
@@ -118,7 +126,6 @@ export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
     throw new Error(`This repository has ${fileNames.length} files, which exceeds the 2,000 file limit.`);
   }
 
-  // Detect the root directory prefix (GitHub zips have a top-level folder like "repo-main/")
   const topDirs = new Set<string>();
   for (const name of fileNames) {
     const slash = name.indexOf("/");
@@ -129,7 +136,7 @@ export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
   const files: FileInput[] = [];
 
   for (const name of fileNames) {
-    if (name.endsWith("/")) continue; // skip directories
+    if (name.endsWith("/")) continue;
 
     const data = entries[name];
     if (!data) continue;
@@ -156,7 +163,6 @@ export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
       continue;
     }
 
-    // Skip binary-looking files (files with null bytes)
     if (content.includes("\0")) continue;
 
     files.push({ path: relativePath, content });
@@ -167,4 +173,9 @@ export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
   }
 
   return files;
+}
+
+export async function fetchRepoFiles(zipUrl: string): Promise<FileInput[]> {
+  const buffer = await downloadZipBuffer(zipUrl);
+  return processZipBuffer(buffer);
 }

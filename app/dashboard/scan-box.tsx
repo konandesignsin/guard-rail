@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { GitHubReposTab } from "@/app/components/github-repos-tab";
 
 type TabId = "github" | "zip" | "repos";
 
@@ -133,9 +134,6 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
           <span>My GitHub repos</span>
-          <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.2 text-[10px] text-[var(--muted-subtle)]">
-            soon
-          </span>
         </button>
       </div>
 
@@ -209,19 +207,7 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
           </div>
         )}
 
-        {activeTab === "repos" && (
-          <div className="rounded border border-dashed border-[var(--border)] p-8 text-center bg-[var(--surface-subtle)]/50">
-            <svg className="mx-auto h-6 w-6 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <p className="mt-2 text-xs font-medium text-[var(--fg)]">
-              GitHub repository sync
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Listing your private GitHub repositories is coming soon. Use the GitHub link tab for public repositories.
-            </p>
-          </div>
-        )}
+        {activeTab === "repos" && <GitHubReposTab />}
 
         {/* Loading State: Cursor-like Scanning indicator with file names ticking by */}
         {isScanning && (

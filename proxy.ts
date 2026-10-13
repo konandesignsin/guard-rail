@@ -3,7 +3,11 @@ import { requireEnv } from "@/lib/env";
 
 requireEnv("CLERK_SECRET_KEY");
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/api/scan(.*)"]);
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/api/scan(.*)",
+  "/api/github(.*)",
+]);
 
 export default clerkMiddleware(
   async (auth, req) => {
