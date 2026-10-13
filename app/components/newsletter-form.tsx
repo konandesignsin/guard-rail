@@ -15,13 +15,13 @@ export function NewsletterForm() {
   if (submitted) {
     return (
       <p className="text-xs text-[var(--cleared-green)] font-medium">
-        Thank you. We will email you when new security checks launch.
+        Thanks — we will email you when new checks launch.
       </p>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 max-w-sm">
+    <form onSubmit={handleSubmit} className="flex items-center gap-1.5">
       <label htmlFor="newsletter-email" className="sr-only">
         Email address
       </label>
@@ -32,13 +32,13 @@ export function NewsletterForm() {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@domain.com"
         required
-        className="w-full sm:w-64 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--ink)] placeholder:text-[var(--muted-light)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--link-blue)]"
+        className="w-40 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--fg)] placeholder:text-[var(--muted-subtle)] outline-none focus:border-[var(--muted)] transition-colors"
       />
       <button
         type="submit"
-        className="shrink-0 rounded-md bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--paper)] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-[var(--link-blue)]"
+        className="shrink-0 rounded-md bg-[var(--surface-subtle)] border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--fg)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
       >
-        Get updates
+        Notify me
       </button>
     </form>
   );

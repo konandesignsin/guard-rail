@@ -1,7 +1,7 @@
-import type { FileInput, Finding, ScanResult } from './types.js';
-import { secretsCheck } from './checks/secrets.js';
-import { supabaseCheck } from './checks/supabase.js';
-import { qualityCheck } from './checks/quality.js';
+import type { FileInput, Finding, ScanResult } from './types';
+import { secretsCheck } from './checks/secrets';
+import { supabaseCheck } from './checks/supabase';
+import { qualityCheck } from './checks/quality';
 
 export function scan(files: FileInput[]): Finding[] {
   return [...secretsCheck(files), ...supabaseCheck(files), ...qualityCheck(files)];

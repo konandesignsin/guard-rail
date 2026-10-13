@@ -1,70 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #101828;
-  --paper: #f7f8fa;
-  --surface: #ffffff;
-  --surface-subtle: #f0f2f5;
-  --border: #e2e5eb;
-  --border-subtle: #ebedf2;
-  --muted: #475467;
-  --muted-light: #667085;
+  /* Dark theme only - near black with slight cool graphite tint */
+  --bg: #090a0f;
+  --surface: #111318;
+  --surface-subtle: #161922;
+  --surface-hover: #1c202b;
+  --border: #222634;
+  --border-subtle: #191c26;
+
+  /* Typography */
+  --fg: #ededf0;
+  --muted: #8b949e;
+  --muted-subtle: #58606d;
+
+  /* Accent tokens */
   --squiggle-red: #e5484d;
-  --squiggle-red-subtle: #fff0f0;
+  --squiggle-red-subtle: rgba(229, 72, 77, 0.12);
+  --squiggle-red-hover: rgba(229, 72, 77, 0.22);
   --squiggle-amber: #f5a524;
-  --squiggle-amber-subtle: #fef7ec;
-  --cleared-green: #1f9d6b;
-  --cleared-green-subtle: #ebfbf3;
-  --link-blue: #2457f5;
-  --link-blue-subtle: #eef2ff;
+  --squiggle-amber-subtle: rgba(245, 165, 36, 0.12);
+  --cleared-green: #3dd68c;
+  --cleared-green-subtle: rgba(61, 214, 140, 0.12);
 
-  --background: var(--paper);
-  --foreground: var(--ink);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #f7f8fa;
-    --paper: #0c0e12;
-    --surface: #14171f;
-    --surface-subtle: #1c212b;
-    --border: #262d3a;
-    --border-subtle: #1e232e;
-    --muted: #98a2b3;
-    --muted-light: #667085;
-    --squiggle-red: #ff6569;
-    --squiggle-red-subtle: rgba(229, 72, 77, 0.15);
-    --squiggle-amber: #fbbf24;
-    --squiggle-amber-subtle: rgba(245, 165, 36, 0.15);
-    --cleared-green: #22c55e;
-    --cleared-green-subtle: rgba(31, 157, 107, 0.15);
-    --link-blue: #4f7bff;
-    --link-blue-subtle: rgba(36, 87, 245, 0.15);
-
-    --background: var(--paper);
-    --foreground: var(--ink);
-  }
+  /* Legacy mappings mapped strictly to dark tokens */
+  --ink: var(--fg);
+  --paper: var(--bg);
+  --background: var(--bg);
+  --foreground: var(--fg);
 }
 
 @theme inline {
-  --color-background: var(--paper);
-  --color-foreground: var(--ink);
-  --color-ink: var(--ink);
-  --color-paper: var(--paper);
+  --color-bg: var(--bg);
+  --color-background: var(--bg);
   --color-surface: var(--surface);
   --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
+
+  --color-fg: var(--fg);
+  --color-foreground: var(--fg);
   --color-muted: var(--muted);
-  --color-muted-light: var(--muted-light);
+  --color-muted-subtle: var(--muted-subtle);
+
   --color-squiggle-red: var(--squiggle-red);
   --color-squiggle-red-subtle: var(--squiggle-red-subtle);
+  --color-squiggle-red-hover: var(--squiggle-red-hover);
   --color-squiggle-amber: var(--squiggle-amber);
   --color-squiggle-amber-subtle: var(--squiggle-amber-subtle);
   --color-cleared-green: var(--cleared-green);
   --color-cleared-green-subtle: var(--cleared-green-subtle);
-  --color-link-blue: var(--link-blue);
-  --color-link-blue-subtle: var(--link-blue-subtle);
 
   --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-bricolage), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -72,80 +58,97 @@
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
+  color-scheme: dark;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-bricolage), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-display);
 }
 
 code, pre, kbd {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
 }
 
 /* Wavy spellcheck underlines */
 .squiggle-red {
   text-decoration: underline wavy var(--squiggle-red);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
 }
 
 .squiggle-amber {
   text-decoration: underline wavy var(--squiggle-amber);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
 }
 
 .squiggle-green {
   text-decoration: underline wavy var(--cleared-green);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
 }
 
-/* Squiggle animated draw */
-@keyframes squiggleStrokeDraw {
+/* Scan beam sweep animation: sweeps once across on load */
+@keyframes scanBeamSweep {
   0% {
-    stroke-dashoffset: 260;
+    left: 0%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
   }
   100% {
-    stroke-dashoffset: 0;
+    left: 100%;
+    opacity: 0;
   }
 }
 
-.animate-draw-squiggle {
-  stroke-dasharray: 260;
-  stroke-dashoffset: 0;
-  animation: squiggleStrokeDraw 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-scan-beam {
+  animation: scanBeamSweep 1.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 
-/* Popover card appear */
-@keyframes noteSlideIn {
+@keyframes squigglesFadeIn {
   0% {
     opacity: 0;
-    transform: translateY(6px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.animate-note-appear {
-  opacity: 0;
-  animation: noteSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.85s forwards;
+.animate-squiggles-reveal {
+  animation: squigglesFadeIn 0.4s ease-out 1.2s forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-draw-squiggle {
-    animation: none;
-    stroke-dashoffset: 0;
+  .animate-scan-beam {
+    display: none;
   }
-  .animate-note-appear {
+  .animate-squiggles-reveal {
     animation: none;
     opacity: 1;
-    transform: none;
   }
+}
+
+/* Custom scrollbars for code boxes & split panes */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-subtle);
 }

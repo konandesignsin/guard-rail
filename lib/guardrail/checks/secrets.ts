@@ -1,4 +1,4 @@
-import type { CheckName, FileInput, Finding } from '../types.js';
+import type { CheckName, FileInput, Finding } from '../types';
 
 const CHECK: CheckName = 'secrets';
 

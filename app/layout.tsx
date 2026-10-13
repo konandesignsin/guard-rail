@@ -23,18 +23,34 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Guardrail — Security spell-checker for AI-built apps",
+  title: "guardrail — security spell-checker for AI-built apps",
   description:
-    "Check apps built with Lovable and Bolt for leaked secrets, open Supabase databases, and messy code, explained in plain English.",
+    "Check apps built with Lovable and Bolt for leaked secrets, open database rules, and messy code with plain-English notes and exact fixes.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon",
+  },
+  openGraph: {
+    title: "guardrail — security spell-checker for AI-built apps",
+    description:
+      "Find leaked keys, wide-open database tables, and messy code in your AI-built applications with instant in-browser checks.",
+    siteName: "guardrail",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "guardrail — security spell-checker for AI-built apps",
+    description:
+      "Find leaked keys, wide-open database tables, and messy code in your AI-built applications with instant in-browser checks.",
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${bricolageGrotesque.variable} ${instrumentSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${bricolageGrotesque.variable} ${instrumentSans.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--paper)] text-[var(--ink)]">
+      <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)] selection:bg-[var(--squiggle-red-subtle)] selection:text-[var(--fg)]">
         <ClerkProvider
           publishableKey={requireEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")}
           signInUrl="/sign-in"
