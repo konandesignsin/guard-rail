@@ -27,6 +27,9 @@ export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull(),
+  name: text("name"),
+  emailOptIn: boolean("email_opt_in").default(true).notNull(),
+  emailsSinceActive: integer("emails_since_active").default(0).notNull(),
   subscribedToUpdates: boolean("subscribed_to_updates")
     .default(false)
     .notNull(),
