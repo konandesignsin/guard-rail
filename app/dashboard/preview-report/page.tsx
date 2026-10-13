@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { SplitReportView, type FindingReportItem } from "@/app/dashboard/split-report-view";
 
 const sampleFindings: FindingReportItem[] = [
@@ -69,6 +70,10 @@ const samplePassed = [
 ];
 
 export default function PreviewReportPage() {
+  if (process.env.NEXT_PUBLIC_SHOW_PREVIEW_ROUTES !== "true") {
+    notFound();
+  }
+
   return (
     <SplitReportView
       score={68}

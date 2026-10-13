@@ -1,5 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#090A0F"/>
-  <text x="16" y="21" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="#EDEDF0" text-anchor="middle">g</text>
-  <path d="M9 25 Q 12 23.5, 15 25 T 21 25 T 24 25" stroke="#E5484D" stroke-width="2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <rect width="100" height="100" rx="22" fill="#090A0F"/>
+  <!-- Circular G outline in off-white -->
+  <path d="M 68 38 A 36 36 0 1 0 68 73 L 68 53" stroke="#EDEDF0" stroke-width="14" stroke-linecap="round"/>
+  <!-- Red squiggle waveform crossing G stem -->
+  <path d="M 42 53 Q 48 44, 54 53 T 66 53 T 74 51" stroke="#E5484D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Accent red vertical leg -->
+  <path d="M 69 53 L 69 73" stroke="#E5484D" stroke-width="9" stroke-linecap="round"/>
 </svg>

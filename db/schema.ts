@@ -86,3 +86,17 @@ export const usage = pgTable("usage", {
   date: date("date").notNull(),
   scanCount: integer("scan_count").default(0).notNull(),
 });
+
+export const scanFiles = pgTable("scan_files", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scanId: uuid("scan_id")
+    .notNull()
+    .references(() => scans.id, { onDelete: "cascade" }),
+  path: text("path").notNull(),
+  bytes: integer("bytes").notNull().default(0),
+  findingCount: integer("finding_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+

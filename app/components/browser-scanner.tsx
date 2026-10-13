@@ -1,186 +1,196 @@
 "use client";
 
-import { useState } from "react";
-import { scan, audit } from "@/lib/guardrail";
-import type { Finding } from "@/lib/guardrail/types";
+import { useDeferredValue, useMemo, useState } from "react";
+import { audit } from "@/lib/guardrail";
+import type { Severity } from "@/lib/guardrail/types";
+import { ScoreRing } from "@/app/components/score-ring";
 
-const LEAKY_SAMPLE = `// Example app configuration exported from a prototype
+/**
+ * Leaky sample. The JWT payload is base64url without "=" padding so the
+ * engine's service_role detector recognises it — verified against
+ * `audit()` from lib/guardrail: 3 high + 1 low, score 54.
+ */
+const EXAMPLE = `// checkout.ts
+import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase client initialization
-export const supabase = createClient(
-  "https://myproject.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...service_role_secret_key_81a"
+const supabase = createClient(
+  "https://xyzcompany.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiZXhwIjoxMjN9.8Kd2nQ"
 );
 
-// Database security policy
--- create policy "allow_everyone" on users for all using (true) with check (true);
+export const stripe = new Stripe("sk_live_51Q8hT4Lk93mNbZq0Rh1p");
 
-// OpenAI client
-export const OPENAI_API_KEY = "sk-live-0982348912389123489124891234";
+export const isAdmin = localStorage.getItem("isAdmin");
+
+export async function refund(chargeId: string) {
+  console.log("refunding", chargeId);
+  return stripe.refunds.create({ charge: chargeId });
+}
 `;
 
+/**
+ * The engine picks its checks from the file extension, so decide whether the
+ * snippet reads as SQL or as TypeScript before auditing it.
+ */
+function detectPath(code: string): string {
+  return /\b(create\s+(table|policy|index)|alter\s+table|using\s*\(|with\s+check\s*\()/i.test(code)
+    ? "snippet.sql"
+    : "snippet.ts";
+}
+
+const SEVERITY_DOT: Record<Severity, string> = {
+  high: "bg-[var(--squiggle-red)]",
+  medium: "bg-[var(--squiggle-amber)]",
+  low: "bg-[var(--muted-subtle)]",
+};
+
 export function BrowserScanner() {
-  const [code, setCode] = useState(LEAKY_SAMPLE);
-  const [findings, setFindings] = useState<Finding[]>(() => {
-    return scan([{ path: "sample.ts", content: LEAKY_SAMPLE }]);
-  });
-  const [auditResult, setAuditResult] = useState(() => {
-    return audit([{ path: "sample.ts", content: LEAKY_SAMPLE }]);
-  });
+  const [code, setCode] = useState(EXAMPLE);
+  const deferredCode = useDeferredValue(code);
+  const isChecking = deferredCode !== code;
 
-  function handleScan(newCode: string) {
-    setCode(newCode);
-    const files = [{ path: "snippet.ts", content: newCode }];
-    const res = scan(files);
-    setFindings(res);
-    setAuditResult(audit(files));
-  }
+  // Runs the real static engine locally. No fetch, no server, no login.
+  const result = useMemo(() => {
+    if (!deferredCode.trim()) return null;
+    return audit([{ path: detectPath(deferredCode), content: deferredCode }]);
+  }, [deferredCode]);
 
-  function handleLoadExample() {
-    handleScan(LEAKY_SAMPLE);
-  }
-
-  function handleClear() {
-    handleScan("");
-  }
+  const findings = result?.findings ?? [];
+  const high = findings.filter((finding) => finding.severity === "high").length;
+  const medium = findings.filter((finding) => finding.severity === "medium").length;
+  const low = findings.filter((finding) => finding.severity === "low").length;
 
   return (
-    <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-xl">
-      {/* Action Header */}
+    <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl shadow-black/30">
+      {/* Chrome bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-[var(--muted)]">input.ts</span>
-          <span className="text-[var(--border)]">|</span>
-          <span className="font-mono text-xs text-[var(--fg)]">
-            Score: <span className={auditResult.score < 70 ? "text-[var(--squiggle-red)] font-bold" : "text-[var(--cleared-green)] font-bold"}>{auditResult.score}/100</span>
+        <div className="flex items-center gap-2.5">
+          <span className="flex gap-1.5" aria-hidden="true">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--border)]" />
           </span>
-          <span className="rounded bg-[var(--surface)] border border-[var(--border)] px-2 py-0.5 text-[11px] font-mono text-[var(--muted)]">
-            {findings.length} finding{findings.length === 1 ? "" : "s"}
-          </span>
+          <span className="font-mono text-[11px] text-[var(--muted)]">sandbox.ts</span>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleLoadExample}
-            className="rounded-full bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-1 font-sans text-xs text-[var(--fg)] transition-colors cursor-pointer"
+            onClick={() => setCode(EXAMPLE)}
+            className="cursor-pointer rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-medium text-[var(--fg)] transition-colors hover:border-[var(--muted-subtle)] hover:bg-[var(--surface-hover)]"
           >
             Load an example
           </button>
           <button
             type="button"
-            onClick={handleClear}
-            className="rounded-full hover:bg-[var(--surface-hover)] px-2.5 py-1 font-sans text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+            onClick={() => setCode("")}
+            className="cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium text-[var(--muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--fg)]"
           >
             Clear
           </button>
         </div>
       </div>
 
-      {/* Code Editor and Live Findings Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[var(--border)]">
-        {/* Code Input Area */}
-        <div className="lg:col-span-7 flex flex-col p-4">
-          <label htmlFor="browser-code-input" className="sr-only">
-            Paste code to scan in browser
+      <div className="grid grid-cols-1 divide-y divide-[var(--border)] lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+        {/* Input */}
+        <div className="flex flex-col gap-3 p-4 sm:p-5 lg:col-span-7">
+          <label htmlFor="guardrail-snippet" className="sr-only">
+            Paste code to check
           </label>
           <textarea
-            id="browser-code-input"
+            id="guardrail-snippet"
             value={code}
-            onChange={(e) => handleScan(e.target.value)}
-            placeholder="Paste any TypeScript, JavaScript, SQL, or config snippet here to scan..."
-            rows={12}
+            onChange={(event) => setCode(event.target.value)}
             spellCheck={false}
-            className="w-full flex-1 resize-y bg-transparent font-mono text-xs sm:text-[13px] text-[var(--fg)] placeholder:text-[var(--muted-subtle)] focus:outline-none leading-relaxed"
+            placeholder={"Paste a snippet — a config file, an API route, a database policy…"}
+            className="min-h-[15rem] w-full flex-1 resize-y rounded-xl border border-[var(--border)] bg-[var(--bg)]/60 p-3.5 font-mono text-[12px] leading-relaxed text-[var(--fg)] outline-none transition-colors placeholder:text-[var(--muted-subtle)] focus-visible:border-[var(--muted-subtle)] sm:text-[12.5px]"
           />
-          <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2.5 text-[11px] text-[var(--muted)]">
-            <span className="flex items-center gap-1.5 font-sans">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--cleared-green)]" />
-              Runs the real engine in your browser.
-            </span>
-            <span className="font-mono">{code.split("\n").length} lines</span>
-          </div>
+          <p className="flex items-center gap-2 font-mono text-[11px] text-[var(--muted-subtle)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--cleared-green)]" aria-hidden="true" />
+            Your code never leaves your browser.
+          </p>
         </div>
 
-        {/* Live Findings View */}
-        <div className="lg:col-span-5 flex flex-col bg-[var(--bg)]/50 p-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-            <span className="text-xs font-medium font-sans text-[var(--fg)]">
-              Instant Findings
-            </span>
-            {findings.length === 0 ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-sans text-[var(--cleared-green)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--cleared-green)]" />
-                Passed all checks
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-sans text-[var(--squiggle-red)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--squiggle-red)]" />
-                {findings.length} issue{findings.length === 1 ? "" : "s"} detected
-              </span>
-            )}
+        {/* Findings */}
+        <div className="flex flex-col bg-[var(--bg)]/40 p-4 sm:p-5 lg:col-span-5">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+            <div className="flex items-baseline gap-2">
+              <h3 className="font-display text-sm font-medium text-[var(--fg)]">Findings</h3>
+              {result && (
+                <span className="font-mono text-[11px] text-[var(--muted)]" role="status" aria-live="polite">
+                  {findings.length === 0
+                    ? "all clear"
+                    : `${high} high · ${medium} medium · ${low} low`}
+                </span>
+              )}
+            </div>
+            {result && <ScoreRing score={result.score} size={54} strokeWidth={5} />}
           </div>
 
-          <div className="mt-3 flex-1 space-y-3 overflow-y-auto max-h-[320px] pr-1">
-            {findings.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--cleared-green-subtle)] border border-[var(--cleared-green)]/30 text-[var(--cleared-green)]">
-                  ✓
+          <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1 lg:max-h-[26rem]">
+            {isChecking ? (
+              <div className="space-y-3" aria-hidden="true">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
+                    <div className="skeleton h-3 w-2/3 rounded-full" />
+                    <div className="skeleton mt-2.5 h-2.5 w-full rounded-full" />
+                    <div className="skeleton mt-2 h-2.5 w-4/5 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : !code.trim() ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
+                <p className="text-xs text-[var(--muted)]">Paste a snippet to check it.</p>
+                <button
+                  type="button"
+                  onClick={() => setCode(EXAMPLE)}
+                  className="cursor-pointer text-xs font-medium text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 transition-colors hover:decoration-[var(--muted)]"
+                >
+                  or load the example
+                </button>
+              </div>
+            ) : findings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--cleared-green)_35%,transparent)] bg-[var(--cleared-green-subtle)] text-[var(--cleared-green)]"
+                  aria-hidden="true"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-4 w-4">
+                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </span>
-                <p className="mt-3 text-xs font-medium text-[var(--fg)]">
-                  No issues found
-                </p>
-                <p className="mt-1 text-[11px] text-[var(--muted)] max-w-[24ch]">
-                  Your snippet does not contain leaked keys or open policies.
+                <p className="text-xs font-semibold text-[var(--fg)]">Nothing risky in this snippet</p>
+                <p className="max-w-[26ch] text-[11px] text-[var(--muted)]">
+                  No leaked keys, open database rules, or unsafe flags found.
                 </p>
               </div>
             ) : (
-              findings.map((item, idx) => {
-                const isHigh = item.severity === "high";
-                return (
-                  <div
-                    key={idx}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs transition-colors hover:border-[var(--border-subtle)]"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`h-2 w-2 rounded-full shrink-0 ${
-                            isHigh ? "bg-[var(--squiggle-red)]" : "bg-[var(--squiggle-amber)]"
-                          }`}
-                        />
-                        <span className="font-medium text-[var(--fg)] text-xs">
-                          {item.title}
-                        </span>
-                      </div>
-                      <span className="font-mono text-[11px] text-[var(--muted)] shrink-0">
-                        line {item.line}
-                      </span>
+              findings.map((finding, index) => (
+                <article
+                  key={`${finding.check}-${finding.line}-${index}`}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 transition-colors hover:border-[var(--muted-subtle)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={`mt-1 h-2 w-2 shrink-0 rounded-full ${SEVERITY_DOT[finding.severity]}`}
+                        aria-hidden="true"
+                      />
+                      <h4 className="text-xs font-semibold text-[var(--fg)]">{finding.title}</h4>
                     </div>
-
-                    <p className="mt-2 text-[11px] text-[var(--muted)] leading-relaxed">
-                      {item.explanation}
-                    </p>
-
-                    <div className="mt-2 rounded bg-[var(--surface-subtle)] border border-[var(--border-subtle)] p-2 font-mono text-[11px] text-[var(--fg)] leading-normal break-all">
-                      <span className="text-[var(--muted)] font-sans">Fix:&nbsp;</span>
-                      {item.fix}
-                    </div>
+                    <span className="shrink-0 rounded border border-[var(--border)] bg-[var(--surface-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted)]">
+                      line {finding.line}
+                    </span>
                   </div>
-                );
-              })
+                  <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{finding.explanation}</p>
+                  <p className="mt-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-2.5 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap text-[var(--fg)]">
+                    <span className="font-sans font-semibold">Fix: </span>
+                    {finding.fix}
+                  </p>
+                </article>
+              ))
             )}
-          </div>
-
-          {/* Privacy badge */}
-          <div className="mt-3 border-t border-[var(--border-subtle)] pt-2.5">
-            <p className="text-[11px] text-[var(--muted)] flex items-center gap-1.5">
-              <svg className="h-3 w-3 text-[var(--cleared-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              Your code never leaves your browser.
-            </p>
           </div>
         </div>
       </div>

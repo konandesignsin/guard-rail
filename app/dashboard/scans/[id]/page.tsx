@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { scans, findings } from "@/db/schema";
+import { scans, findings, scanFiles } from "@/db/schema";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { SplitReportView, type FindingReportItem } from "@/app/dashboard/split-report-view";
+import { type HeatMapFile } from "@/app/dashboard/repo-heat-map";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -32,6 +33,7 @@ async function ReportContent({ params }: Props) {
 
   const user = await getOrCreateUser();
 
+  // Every read of scans, findings, and scan_files must be filtered by scan id AND signed-in user
   const [scanRow] = await db
     .select()
     .from(scans)
@@ -40,19 +42,33 @@ async function ReportContent({ params }: Props) {
 
   if (!scanRow) notFound();
 
+  // Read findings for this scan
   const scanFindings = await db
     .select()
     .from(findings)
     .where(eq(findings.scanId, scanRow.id));
 
+  // Read scan_files metadata for heat map (path and bytes only, no code content)
+  const filesList = await db
+    .select()
+    .from(scanFiles)
+    .where(eq(scanFiles.scanId, scanRow.id));
+
   const formattedFindings: FindingReportItem[] = scanFindings.map((f) => ({
     id: f.id,
     severity: (f.severity as "high" | "medium" | "low") || "high",
+    check: f.check,
     title: f.title,
     file: f.file,
     line: f.line,
     explanation: f.explanation,
     fix: f.fix,
+  }));
+
+  const heatMapFiles: HeatMapFile[] = filesList.map((f) => ({
+    path: f.path,
+    bytes: f.bytes,
+    findingCount: f.findingCount,
   }));
 
   const score = scanRow.score ?? 0;
@@ -68,6 +84,7 @@ async function ReportContent({ params }: Props) {
         year: "numeric",
       })}`}
       findings={formattedFindings}
+      files={heatMapFiles}
       backHref="/dashboard"
     />
   );

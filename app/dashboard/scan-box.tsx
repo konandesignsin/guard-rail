@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GitHubReposTab } from "@/app/components/github-repos-tab";
 
-type TabId = "github" | "zip" | "repos";
+type TabId = "github" | "repos";
 
 const sampleFiles = [
   "src/lib/supabase.ts",
@@ -30,12 +30,19 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState("");
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [detectedFindingCount, setDetectedFindingCount] = useState(0);
 
   useEffect(() => {
     if (!isScanning) return;
     const interval = setInterval(() => {
-      setCurrentFileIndex((prev) => (prev + 1) % sampleFiles.length);
-    }, 400);
+      setCurrentFileIndex((prev) => {
+        const next = (prev + 1) % sampleFiles.length;
+        if (next === 1 || next === 3 || next === 6) {
+          setDetectedFindingCount((c) => c + 1);
+        }
+        return next;
+      });
+    }, 380);
     return () => clearInterval(interval);
   }, [isScanning]);
 
@@ -61,6 +68,7 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
 
     setScanError("");
     setIsScanning(true);
+    setDetectedFindingCount(0);
 
     try {
       const res = await fetch("/api/scan", {
@@ -85,13 +93,13 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
   }
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-lg">
-      {/* Tab Navigation: Compact editor tabs */}
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-xl">
+      {/* Tab Navigation: GitHub link + My GitHub repos (Removed 'soon' upload zip tab) */}
       <div className="flex items-center border-b border-[var(--border)] bg-[var(--surface-subtle)] px-2">
         <button
           type="button"
           onClick={() => setActiveTab("github")}
-          className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-mono transition-colors border-b-2 -mb-px outline-none ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-mono transition-colors border-b-2 -mb-px outline-none cursor-pointer ${
             activeTab === "github"
               ? "border-[var(--fg)] text-[var(--fg)] bg-[var(--surface)]"
               : "border-transparent text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
@@ -105,26 +113,8 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
 
         <button
           type="button"
-          onClick={() => setActiveTab("zip")}
-          className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-mono transition-colors border-b-2 -mb-px outline-none ${
-            activeTab === "zip"
-              ? "border-[var(--fg)] text-[var(--fg)] bg-[var(--surface)]"
-              : "border-transparent text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
-          }`}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          <span>Upload zip</span>
-          <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.2 text-[10px] text-[var(--muted-subtle)]">
-            soon
-          </span>
-        </button>
-
-        <button
-          type="button"
           onClick={() => setActiveTab("repos")}
-          className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-mono transition-colors border-b-2 -mb-px outline-none ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-mono transition-colors border-b-2 -mb-px outline-none cursor-pointer ${
             activeTab === "repos"
               ? "border-[var(--fg)] text-[var(--fg)] bg-[var(--surface)]"
               : "border-transparent text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-hover)]"
@@ -193,35 +183,44 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
           </div>
         )}
 
-        {activeTab === "zip" && (
-          <div className="rounded border border-dashed border-[var(--border)] p-8 text-center bg-[var(--surface-subtle)]/50">
-            <svg className="mx-auto h-6 w-6 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <p className="mt-2 text-xs font-medium text-[var(--fg)]">
-              Upload zip archive
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Zip export scanning is coming soon. Please paste a GitHub repository link to scan today.
-            </p>
-          </div>
-        )}
-
         {activeTab === "repos" && <GitHubReposTab />}
 
-        {/* Loading State: Cursor-like Scanning indicator with file names ticking by */}
+        {/* Polished Scanning State: Beam animation over faint code lines + file ticking + live count */}
         {isScanning && (
-          <div className="mt-4 rounded-md border border-[var(--border)] bg-[var(--bg)] p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
+          <div className="relative mt-4 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg)] p-4 space-y-3">
+            {/* Scan Beam sweep animation */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[var(--squiggle-red)] to-transparent opacity-80"
+              style={{
+                animation: "scanBeam 1.8s ease-in-out infinite alternate",
+              }}
+            />
+
+            {/* Faint background code lines */}
+            <div className="space-y-1 opacity-20 font-mono text-[10px] select-none pointer-events-none">
+              <div className="h-2 w-3/4 bg-[var(--muted)] rounded-xs" />
+              <div className="h-2 w-1/2 bg-[var(--muted)] rounded-xs" />
+              <div className="h-2 w-5/6 bg-[var(--muted)] rounded-xs" />
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[var(--cleared-green)] animate-ping" />
-                <span className="font-mono text-[var(--fg)]">
-                  Analyzing repository files...
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--cleared-green)] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--cleared-green)]" />
+                </span>
+                <span className="font-mono text-[var(--fg)] font-medium">
+                  Scanning repository files...
                 </span>
               </div>
-              <span className="font-mono text-[11px] text-[var(--muted)]">
-                {currentFileIndex + 1} / {sampleFiles.length}
-              </span>
+              <div className="flex items-center gap-3 font-mono text-[11px]">
+                <span className="text-[var(--squiggle-red)] font-semibold">
+                  {detectedFindingCount} {detectedFindingCount === 1 ? "finding" : "findings"}
+                </span>
+                <span className="text-[var(--muted)]">
+                  {currentFileIndex + 1} / {sampleFiles.length}
+                </span>
+              </div>
             </div>
 
             {/* Progress Bar */}
@@ -235,11 +234,28 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
             </div>
 
             <p className="font-mono text-[11px] text-[var(--muted)] truncate">
-              File: <span className="text-[var(--fg)]">{sampleFiles[currentFileIndex]}</span>
+              Inspecting: <span className="text-[var(--fg)]">{sampleFiles[currentFileIndex]}</span>
             </p>
           </div>
         )}
       </div>
+
+      <style jsx global>{`
+        @keyframes scanBeam {
+          0% {
+            transform: translateY(0px);
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(60px);
+            opacity: 0.9;
+          }
+          100% {
+            transform: translateY(110px);
+            opacity: 0.3;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { scans, findings, usage } from "@/db/schema";
+import { scans, findings, usage, scanFiles } from "@/db/schema";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { parseGitHubUrl, buildZipUrl } from "@/lib/github-url";
 import { fetchRepoFiles, processZipBuffer } from "@/lib/fetch-repo";
@@ -219,6 +219,24 @@ export async function POST(request: Request) {
 
     try {
       const result = audit(files);
+
+      // Save file metadata only for heat map (never store file contents!)
+      if (files && files.length > 0) {
+        const fileFindingCounts: Record<string, number> = {};
+        for (const f of result.findings) {
+          fileFindingCounts[f.file] = (fileFindingCounts[f.file] || 0) + 1;
+        }
+
+        const textEncoder = new TextEncoder();
+        const fileRecords = files.map((file) => ({
+          scanId: scanRow.id,
+          path: file.path,
+          bytes: textEncoder.encode(file.content || "").length,
+          findingCount: fileFindingCounts[file.path] || 0,
+        }));
+
+        await db.insert(scanFiles).values(fileRecords);
+      }
 
       // Save findings
       if (result.findings.length > 0) {
