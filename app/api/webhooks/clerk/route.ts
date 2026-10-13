@@ -17,6 +17,10 @@ interface ClerkWebhookEvent {
   data: ClerkUserEventData;
 }
 
+function redactEmail(message: string, email: string): string {
+  return message.split(email).join(`***@${email.split("@")[1] ?? "***"}`);
+}
+
 export async function POST(req: Request) {
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret) {
@@ -39,6 +43,7 @@ export async function POST(req: Request) {
   try {
     const wh = new Webhook(secret);
     wh.verify(payload, svixHeaders);
+    console.log("[clerk webhook] signature verified");
     event = JSON.parse(payload) as ClerkWebhookEvent;
   } catch {
     return new Response("Invalid webhook signature.", { status: 400 });
@@ -62,6 +67,7 @@ export async function POST(req: Request) {
   const email = primary?.email_address;
 
   if (!id || !email) {
+    console.log("[clerk webhook] user.created skipped: missing id or email");
     return new Response(null, { status: 200 });
   }
 
@@ -70,23 +76,47 @@ export async function POST(req: Request) {
       .filter((part): part is string => Boolean(part))
       .join(" ") || null;
 
-  await db
-    .insert(users)
-    .values({ clerkId: id, email, name, emailOptIn: true, emailsSinceActive: 0 })
-    .onConflictDoUpdate({
-      target: users.clerkId,
-      set: { email, name, emailOptIn: true },
-    });
+  console.log(
+    "[clerk webhook] user.created parsed:",
+    JSON.stringify({
+      clerkId: id,
+      emailDomain: email.split("@")[1] ?? "(unknown)",
+      hasName: Boolean(name),
+    }),
+  );
 
   try {
-    const { error } = await sendWelcomeEmail(email, name);
+    await db
+      .insert(users)
+      .values({ clerkId: id, email, name, emailOptIn: true, emailsSinceActive: 0 })
+      .onConflictDoUpdate({
+        target: users.clerkId,
+        set: { email, name, emailOptIn: true },
+      });
+    console.log("[clerk webhook] database insert succeeded:", { clerkId: id });
+  } catch (err) {
+    console.error(
+      "[clerk webhook] database insert failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
+  try {
+    const { data, error } = await sendWelcomeEmail(email, name);
     if (error) {
-      console.error("[clerk webhook] welcome email failed:", error.message);
+      console.error(
+        "[clerk webhook] welcome email failed:",
+        redactEmail(error.message, email),
+      );
+    } else {
+      console.log("[clerk webhook] welcome email sent:", {
+        messageId: data?.id,
+      });
     }
   } catch (err) {
     console.error(
       "[clerk webhook] welcome email crashed:",
-      err instanceof Error ? err.message : String(err),
+      redactEmail(err instanceof Error ? err.message : String(err), email),
     );
   }
 
