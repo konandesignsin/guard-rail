@@ -1,0 +1,75 @@
+
+> guardrail-web@0.1.0 dev
+> next dev -p 3111
+
+▲ Next.js 16.4.0 (Turbopack)
+- Local:         http://localhost:3111
+- Network:       http://192.168.1.24:3111
+- Environments: .env.local
+✓ Ready in 631ms
+✓ Running next.config.ts took 50ms
+⚠ Slow filesystem detected. The benchmark took 216ms. If \\?\D:\qoder project\guardrail-web\.next\dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+- Cache Components enabled
+- Partial Prefetching enabled
+
+Clerk - DEPRECATION WARNING: "createRouteMatcher" is deprecated and will be removed in the next major release.
+Use resource-based auth checks instead. Move auth checks into each page, layout, API route, or Server Function that accesses protected data. Middleware-based auth checks rely on path matching, which can diverge from how Next.js routes requests and leave protected resources reachable. For a migration guide, see: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/migrate-from-create-route-matcher
+Attention: Clerk collects telemetry data from its SDKs when connected to development instances.
+The data collected is used to inform Clerk's product roadmap.
+To learn more, including how to opt-out from the telemetry program, visit: https://clerk.com/docs/telemetry.
+
+○ Compiling / ...
+ GET / 200 in 16.1s (next.js: 15.0s, proxy.ts: 748ms, application-code: 409ms)
+ GET / 200 in 241ms (next.js: 113ms, proxy.ts: 13ms, application-code: 115ms)
+ GET / 200 in 188ms (next.js: 42ms, proxy.ts: 23ms, application-code: 123ms)
+ GET / 200 in 137ms (next.js: 8ms, proxy.ts: 10ms, application-code: 119ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (https://certain-ewe-5112.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js:40:1032)
+⨯ The directory at "D:\qoder project\guardrail-web\.next\dev" was deleted.
+
+Deleting this directory removes caches and will cause slower performance.
+
+Deleting this directory while Next.js is running can lead to undefined behavior. Restarting the server to recover...
+▲ Next.js 16.4.0 (Turbopack)
+- Local:         http://localhost:3111
+- Network:       http://192.168.1.24:3111
+- Environments: .env.local
+✓ Ready in 511ms
+✓ Running next.config.ts took 49ms
+⚠ Slow filesystem detected. The benchmark took 247ms. If \\?\D:\qoder project\guardrail-web\.next\dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+- Cache Components enabled
+- Partial Prefetching enabled
+
+Clerk - DEPRECATION WARNING: "createRouteMatcher" is deprecated and will be removed in the next major release.
+Use resource-based auth checks instead. Move auth checks into each page, layout, API route, or Server Function that accesses protected data. Middleware-based auth checks rely on path matching, which can diverge from how Next.js routes requests and leave protected resources reachable. For a migration guide, see: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/migrate-from-create-route-matcher
+Attention: Clerk collects telemetry data from its SDKs when connected to development instances.
+The data collected is used to inform Clerk's product roadmap.
+To learn more, including how to opt-out from the telemetry program, visit: https://clerk.com/docs/telemetry.
+
+○ Compiling / ...
+ GET / 200 in 4.1s (next.js: 3.7s, proxy.ts: 268ms, application-code: 60ms)
+ GET / 200 in 219ms (next.js: 43ms, proxy.ts: 15ms, application-code: 160ms)
+ GET / 200 in 295ms (next.js: 50ms, proxy.ts: 20ms, application-code: 225ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (https://certain-ewe-5112.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js:40:1032)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (https://certain-ewe-5112.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js:40:1032)
+⨯ The directory at "D:\qoder project\guardrail-web\.next\dev" was deleted.
+
+Deleting this directory removes caches and will cause slower performance.
+
+Deleting this directory while Next.js is running can lead to undefined behavior. Restarting the server to recover...
+▲ Next.js 16.4.0 (Turbopack)
+- Local:         http://localhost:3111
+- Network:       http://192.168.1.24:3111
+- Environments: .env.local
+✓ Ready in 540ms
+✓ Running next.config.ts took 35ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+Clerk - DEPRECATION WARNING: "createRouteMatcher" is deprecated and will be removed in the next major release.
+Use resource-based auth checks instead. Move auth checks into each page, layout, API route, or Server Function that accesses protected data. Middleware-based auth checks rely on path matching, which can diverge from how Next.js routes requests and leave protected resources reachable. For a migration guide, see: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/migrate-from-create-route-matcher
+Attention: Clerk collects telemetry data from its SDKs when connected to development instances.
+The data collected is used to inform Clerk's product roadmap.
+To learn more, including how to opt-out from the telemetry program, visit: https://clerk.com/docs/telemetry.
+
