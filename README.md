@@ -1,5 +1,23 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment variables
+
+Copy `.env.example` to `.env.local` for local development and fill in the values. On Vercel, add each variable in Project → Settings → Environment Variables (NEXT_PUBLIC_ vars are inlined at build time, so set them before deploying).
+
+| Variable | Used for |
+| --- | --- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk auth on the client |
+| `CLERK_SECRET_KEY` | Clerk auth on the server |
+| `CLERK_WEBHOOK_SECRET` | Verifying Clerk webhook signatures (`whsec_...`) |
+| `DATABASE_URL` | Neon Postgres connection string |
+| `RESEND_API_KEY` | Sending email via Resend (`re_...`) |
+| `EMAIL_FROM` | From address for outgoing email (falls back to `onboarding@resend.dev`) |
+| `NEXT_PUBLIC_APP_URL` | Public base URL of the app (used in emails) |
+| `CRON_SECRET` | Shared secret for future cron routes |
+| `TEST_EMAIL` | Local only — recipient for `scripts/test-resend.ts` |
+
+To verify your Resend key, run `npx tsx --env-file=.env.local scripts/test-resend.ts` (set `TEST_EMAIL` to receive a test email).
+
 ## Getting Started
 
 First, run the development server:
