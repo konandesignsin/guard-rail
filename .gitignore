@@ -14,4 +14,4 @@ next-env.d.ts
 .vercel
 .freebuff/
 .tmp-verify/
-*.tsbuildinfo
+*.tsbuildinfo.freebuff
