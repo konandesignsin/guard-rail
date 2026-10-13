@@ -38,7 +38,8 @@ export async function POST(req: Request) {
   let event: ClerkWebhookEvent;
   try {
     const wh = new Webhook(secret);
-    event = wh.verify(payload, svixHeaders) as ClerkWebhookEvent;
+    wh.verify(payload, svixHeaders);
+    event = JSON.parse(payload) as ClerkWebhookEvent;
   } catch {
     return new Response("Invalid webhook signature.", { status: 400 });
   }
