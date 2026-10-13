@@ -31,18 +31,31 @@ export interface DashboardStats {
   trendDelta: number | null;
 }
 
+interface OnboardingState {
+  dismissed: boolean;
+  steps: {
+    addedCodeOrRepo: boolean;
+    ranFirstScan: boolean;
+    reviewedFindings: boolean;
+  };
+}
+
 interface WorkspaceLayoutProps {
   userEmail?: string;
   scans: ScanItem[];
   stats?: DashboardStats;
+  onboarding: OnboardingState;
 }
 
-export function WorkspaceClient({ userEmail, scans, stats }: WorkspaceLayoutProps) {
+export function WorkspaceClient({ userEmail, scans, stats, onboarding }: WorkspaceLayoutProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isStartingExample, setIsStartingExample] = useState(false);
   const [exampleError, setExampleError] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(!onboarding.dismissed);
+  const [isDismissingOnboarding, setIsDismissingOnboarding] = useState(false);
+  const [onboardingError, setOnboardingError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const showPreviewRoutes = process.env.NEXT_PUBLIC_SHOW_PREVIEW_ROUTES === "true";
@@ -88,6 +101,24 @@ export function WorkspaceClient({ userEmail, scans, stats }: WorkspaceLayoutProp
     } catch {
       setExampleError("Connection error while loading example scan.");
       setIsStartingExample(false);
+    }
+  }
+
+  async function handleDismissOnboarding() {
+    setIsDismissingOnboarding(true);
+    setOnboardingError("");
+
+    try {
+      const response = await fetch("/api/onboarding/dismiss", { method: "POST" });
+      if (!response.ok) {
+        setOnboardingError("Could not dismiss onboarding. Please try again.");
+        return;
+      }
+      setShowOnboarding(false);
+    } catch {
+      setOnboardingError("Could not dismiss onboarding. Please try again.");
+    } finally {
+      setIsDismissingOnboarding(false);
     }
   }
 
@@ -145,6 +176,13 @@ export function WorkspaceClient({ userEmail, scans, stats }: WorkspaceLayoutProp
       onSelect: () => router.push(`/dashboard/scans/${scan.id}`),
     });
   });
+
+  const onboardingSteps = [
+    { label: "Add your code or connect a repo", done: onboarding.steps.addedCodeOrRepo },
+    { label: "Run your first scan", done: onboarding.steps.ranFirstScan },
+    { label: "Review the findings and fixes", done: onboarding.steps.reviewedFindings },
+  ];
+  const completedOnboardingSteps = onboardingSteps.filter((step) => step.done).length;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[var(--bg)] text-[var(--fg)] font-sans">
@@ -365,6 +403,67 @@ export function WorkspaceClient({ userEmail, scans, stats }: WorkspaceLayoutProp
             </p>
           </div>
 
+          {showOnboarding && (
+            <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-medium text-[var(--fg)]">Getting started</h2>
+                    <span className="font-mono text-[10px] text-[var(--muted-subtle)]">
+                      {completedOnboardingSteps}/3
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    Complete your first security review in three steps.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDismissOnboarding}
+                  disabled={isDismissingOnboarding}
+                  aria-label="Dismiss onboarding"
+                  className="rounded p-1 text-[var(--muted-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--fg)] disabled:opacity-50 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <ol className="mt-4 grid gap-2 sm:grid-cols-3">
+                {onboardingSteps.map((step, index) => (
+                  <li
+                    key={step.label}
+                    className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-2.5"
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] ${
+                        step.done
+                          ? "border-[var(--cleared-green)]/40 bg-[var(--cleared-green)]/10 text-[var(--cleared-green)]"
+                          : "border-[var(--border)] text-[var(--muted)]"
+                      }`}
+                    >
+                      {step.done ? (
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        index + 1
+                      )}
+                    </span>
+                    <span className={`text-xs ${step.done ? "text-[var(--muted)] line-through" : "text-[var(--fg)]"}`}>
+                      {step.label}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              {onboardingError && (
+                <p className="mt-3 text-xs text-[var(--squiggle-red)]">{onboardingError}</p>
+              )}
+            </section>
+          )}
+
           {/* Command-Bar Style Scan Input */}
           <ScanBox inputRef={inputRef} />
 
@@ -377,6 +476,9 @@ export function WorkspaceClient({ userEmail, scans, stats }: WorkspaceLayoutProp
           {/* FIRST RUN EMPTY STATE: When user has 0 scans */}
           {scans.length === 0 ? (
             <div className="space-y-6 pt-2">
+              <p className="text-center text-xs text-[var(--muted)]">
+                No scans yet. Add a repository above or run the example to create your first report.
+              </p>
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 space-y-6 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
                   <div>

@@ -9,16 +9,48 @@ interface ScoreRingProps {
   showLabel?: boolean;
 }
 
+export function getScoreRating(score: number): {
+  label: "Excellent" | "Good" | "Needs work" | "Critical";
+  colorVar: string;
+  badgeClass: string;
+} {
+  if (score >= 90) {
+    return {
+      label: "Excellent",
+      colorVar: "var(--cleared-green)",
+      badgeClass: "bg-[var(--cleared-green-subtle)] text-[var(--cleared-green)] border-[var(--cleared-green)]/30",
+    };
+  }
+  if (score >= 75) {
+    return {
+      label: "Good",
+      colorVar: "var(--cleared-green)",
+      badgeClass: "bg-[var(--cleared-green-subtle)] text-[var(--cleared-green)] border-[var(--cleared-green)]/30",
+    };
+  }
+  if (score >= 50) {
+    return {
+      label: "Needs work",
+      colorVar: "var(--squiggle-amber)",
+      badgeClass: "bg-[var(--squiggle-amber-subtle)] text-[var(--squiggle-amber)] border-[var(--squiggle-amber)]/30",
+    };
+  }
+  return {
+    label: "Critical",
+    colorVar: "var(--squiggle-red)",
+    badgeClass: "bg-[var(--squiggle-red-subtle)] text-[var(--squiggle-red)] border-[var(--squiggle-red)]/30",
+  };
+}
+
 export function ScoreRing({
   score,
-  size = 120,
-  strokeWidth = 10,
+  size = 72,
+  strokeWidth = 6,
   showLabel = true,
 }: ScoreRingProps) {
   const [displayedScore, setDisplayedScore] = useState(0);
 
   useEffect(() => {
-    // Respect prefers-reduced-motion
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (mediaQuery.matches) {
       setDisplayedScore(score);
@@ -26,13 +58,12 @@ export function ScoreRing({
     }
 
     let start = 0;
-    const duration = 900; // ms
+    const duration = 800; // ms
     const startTime = performance.now();
 
     function step(currentTime: number) {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // easeOutExpo
       const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       const currentVal = Math.round(start + (score - start) * ease);
       setDisplayedScore(currentVal);
@@ -50,28 +81,20 @@ export function ScoreRing({
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (displayedScore / 100) * circumference;
 
-  const isPerfect = displayedScore === 100;
-  const strokeColor =
-    displayedScore >= 90
-      ? "var(--cleared-green)"
-      : displayedScore >= 70
-      ? "var(--squiggle-amber)"
-      : "var(--squiggle-red)";
+  const rating = getScoreRating(displayedScore);
+  const strokeColor = rating.colorVar;
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center transition-all duration-700 ${
-        isPerfect ? "filter drop-shadow-[0_0_12px_rgba(61,214,140,0.45)]" : ""
-      }`}
+      className="relative inline-flex items-center justify-center shrink-0"
       style={{ width: size, height: size }}
       role="progressbar"
       aria-valuenow={displayedScore}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={`Audit safety score: ${displayedScore} out of 100`}
+      aria-label={`Security score: ${displayedScore} out of 100, rated ${rating.label}`}
     >
       <svg width={size} height={size} className="-rotate-90">
-        {/* Background Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -80,7 +103,6 @@ export function ScoreRing({
           strokeWidth={strokeWidth}
           fill="transparent"
         />
-        {/* Animated Score Progress */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -98,16 +120,16 @@ export function ScoreRing({
       {showLabel && (
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span
-            className="font-mono font-bold tracking-tight text-[var(--fg)]"
-            style={{ fontSize: size * 0.28 }}
+            className="font-mono font-bold tracking-tight text-[var(--fg)] leading-none"
+            style={{ fontSize: size * 0.32 }}
           >
             {displayedScore}
           </span>
           <span
-            className="font-mono uppercase tracking-widest text-[var(--muted-subtle)]"
-            style={{ fontSize: Math.max(9, size * 0.08) }}
+            className="text-[9px] uppercase tracking-wider text-[var(--muted)] font-mono mt-0.5"
+            style={{ fontSize: Math.max(8, size * 0.11) }}
           >
-            score
+            /100
           </span>
         </div>
       )}

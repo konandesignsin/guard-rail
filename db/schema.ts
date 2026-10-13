@@ -33,6 +33,7 @@ export const users = pgTable("users", {
   subscribedToUpdates: boolean("subscribed_to_updates")
     .default(false)
     .notNull(),
+  onboardingDismissed: boolean("onboarding_dismissed").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

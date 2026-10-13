@@ -12,15 +12,22 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+function ScanLoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)] p-6 space-y-6 max-w-7xl mx-auto animate-pulse">
+      <div className="h-10 bg-[var(--surface-subtle)] rounded-lg w-1/3" />
+      <div className="h-32 bg-[var(--surface)] border border-[var(--border)] rounded-xl" />
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[600px]">
+        <div className="md:col-span-5 bg-[var(--surface)] border border-[var(--border)] rounded-xl" />
+        <div className="md:col-span-7 bg-[var(--surface)] border border-[var(--border)] rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function ScanReportPage({ params }: Props) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen w-full items-center justify-center bg-[var(--bg)] text-xs font-mono text-[var(--muted)]">
-          loading report...
-        </div>
-      }
-    >
+    <Suspense fallback={<ScanLoadingSkeleton />}>
       <ReportContent params={params} />
     </Suspense>
   );
@@ -48,7 +55,7 @@ async function ReportContent({ params }: Props) {
     .from(findings)
     .where(eq(findings.scanId, scanRow.id));
 
-  // Read scan_files metadata for heat map (path and bytes only, no code content)
+  // Read scan_files metadata for heat map / files list
   const filesList = await db
     .select()
     .from(scanFiles)

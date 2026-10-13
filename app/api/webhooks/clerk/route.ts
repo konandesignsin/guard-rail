@@ -101,23 +101,30 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const { data, error } = await sendWelcomeEmail(email, name);
-    if (error) {
+  const emailFrom = process.env.EMAIL_FROM?.trim();
+  if (!emailFrom) {
+    console.log("[clerk webhook] welcome email skipped: sender is not configured");
+  } else if (emailFrom.toLowerCase() === "onboarding@resend.dev") {
+    console.log("[clerk webhook] welcome email skipped: Resend test sender is configured");
+  } else {
+    try {
+      const { data, error } = await sendWelcomeEmail(email, name);
+      if (error) {
+        console.error(
+          "[clerk webhook] welcome email failed:",
+          redactEmail(error.message, email),
+        );
+      } else {
+        console.log("[clerk webhook] welcome email sent:", {
+          messageId: data?.id,
+        });
+      }
+    } catch (err) {
       console.error(
-        "[clerk webhook] welcome email failed:",
-        redactEmail(error.message, email),
+        "[clerk webhook] welcome email crashed:",
+        redactEmail(err instanceof Error ? err.message : String(err), email),
       );
-    } else {
-      console.log("[clerk webhook] welcome email sent:", {
-        messageId: data?.id,
-      });
     }
-  } catch (err) {
-    console.error(
-      "[clerk webhook] welcome email crashed:",
-      redactEmail(err instanceof Error ? err.message : String(err), email),
-    );
   }
 
   return new Response(null, { status: 200 });

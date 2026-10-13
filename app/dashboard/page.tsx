@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { currentUser } from "@clerk/nextjs/server";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { WorkspaceClient, type ScanItem, type DashboardStats } from "@/app/dashboard/workspace-client";
@@ -21,6 +22,7 @@ export default function DashboardPage() {
 
 async function DashboardDataLoader() {
   const user = await getOrCreateUser();
+  const clerkUser = await currentUser();
 
   const userScans = await db
     .select()
@@ -92,11 +94,23 @@ async function DashboardDataLoader() {
     trendDelta,
   };
 
+  const hasGitHubConnection = clerkUser?.externalAccounts.some(
+    (account) => account.provider === "github" || account.provider === "oauth_github",
+  ) ?? false;
+
   return (
     <WorkspaceClient
       userEmail={user.email}
       scans={serializedScans}
       stats={stats}
+      onboarding={{
+        dismissed: user.onboardingDismissed,
+        steps: {
+          addedCodeOrRepo: hasGitHubConnection || userScans.length > 0,
+          ranFirstScan: userScans.length > 0,
+          reviewedFindings: allFindings.length > 0,
+        },
+      }}
     />
   );
 }
