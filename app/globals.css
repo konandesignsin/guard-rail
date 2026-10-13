@@ -348,6 +348,11 @@ details[open] > summary .faq-chevron {
     scroll-behavior: smooth;
   }
 
+  /* Smooth cross-page transitions (same-origin navigations), CSS-only. */
+  @view-transition {
+    navigation: auto;
+  }
+
   /* Reveal on scroll (once) */
   .reveal {
     transition:

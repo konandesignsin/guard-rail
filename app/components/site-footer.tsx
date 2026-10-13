@@ -18,7 +18,7 @@ export function SiteFooter() {
             href="https://github.com"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-[var(--fg)]"
+            className="-my-1 inline-flex items-center gap-1.5 py-1 transition-colors hover:text-[var(--fg)]"
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path
