@@ -15,3 +15,5 @@ next-env.d.ts
 .freebuff/
 .tmp-verify/
 *.tsbuildinfo.freebuff
+# Local dev scripts (not for production)
+scripts/diagnose-db.ts
