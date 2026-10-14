@@ -81,8 +81,15 @@ async function ReportContent({ params }: Props) {
   const score = scanRow.score ?? 0;
   const shortId = scanRow.id.slice(0, 7);
 
+  const aiEnabledGlobal = process.env.AI_ENABLED === "true";
+  const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+  const hasKey =
+    (provider === "gemini" && !!process.env.GEMINI_API_KEY) ||
+    (provider === "groq" && !!process.env.GROQ_API_KEY && !!process.env.AI_MODEL);
+
   return (
     <SplitReportView
+      scanId={scanRow.id}
       score={score}
       repoName={`${scanRow.repoName ?? "Repository"} #${shortId}`}
       subtitle={`Scanned on ${scanRow.createdAt.toLocaleDateString("en-US", {
@@ -93,6 +100,8 @@ async function ReportContent({ params }: Props) {
       findings={formattedFindings}
       files={heatMapFiles}
       backHref="/dashboard"
+      isAiGlobalEnabled={aiEnabledGlobal && hasKey}
+      initialUserOptIn={user.aiOptIn}
     />
   );
 }

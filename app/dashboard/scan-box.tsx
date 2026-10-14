@@ -177,7 +177,7 @@ export function ScanBox({ inputRef }: ScanBoxProps) {
             )}
 
             <div className="flex items-center justify-between text-[11px] text-[var(--muted)] pt-1">
-              <span>Public repositories only. Files are checked in memory and not stored.</span>
+              <span>Public repositories only. Files are checked in memory and not stored. Optional AI explanations send a redacted snippet to the provider.</span>
               <span className="font-mono text-[var(--muted-subtle)]">Press Enter to scan</span>
             </div>
           </div>

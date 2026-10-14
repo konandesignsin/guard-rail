@@ -12,6 +12,9 @@ export const OWNER_NAME = "Konan Designs";
 /** Address shown for privacy, terms, and policy questions. */
 export const CONTACT_EMAIL = "konandesigns.in@gmail.com";
 
+/** The AI provider used for optional finding explanations. */
+export const AI_PROVIDER_NAME = "Google";
+
 /** Date shown as "Effective <date>" on every legal page. */
 export const LEGAL_EFFECTIVE_DATE = "October 14, 2026";
 

@@ -4,6 +4,8 @@ import { useState, useId } from "react";
 import Link from "next/link";
 import { ScoreRing, getScoreRating } from "@/app/dashboard/score-ring";
 import type { HeatMapFile } from "@/app/dashboard/repo-heat-map";
+import { AiExplanationSection } from "@/app/dashboard/ai-explanation-section";
+import { AI_PROVIDER_NAME } from "@/lib/legal";
 
 export interface FindingReportItem {
   id: string;
@@ -19,6 +21,7 @@ export interface FindingReportItem {
 }
 
 export interface SplitReportViewProps {
+  scanId?: string;
   score: number;
   repoName: string;
   subtitle?: string;
@@ -29,6 +32,8 @@ export interface SplitReportViewProps {
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  isAiGlobalEnabled?: boolean;
+  initialUserOptIn?: boolean;
 }
 
 // Helper to determine category
@@ -77,6 +82,7 @@ interface GroupedFindingItem {
 }
 
 export function SplitReportView({
+  scanId,
   score,
   repoName,
   subtitle,
@@ -87,7 +93,12 @@ export function SplitReportView({
   isLoading = false,
   error = null,
   onRetry,
+  isAiGlobalEnabled = false,
+  initialUserOptIn = false,
 }: SplitReportViewProps) {
+  // Opt-in state
+  const [userOptIn, setUserOptIn] = useState(initialUserOptIn);
+
   // Mode: "simple" (Plain English) or "technical" (Developer details)
   const [mode, setMode] = useState<"simple" | "technical">("simple");
 
@@ -1090,6 +1101,19 @@ export function SplitReportView({
                     {activeSelected.fix}
                   </div>
                 </div>
+
+                {/* AI Explanation Section (on-demand) */}
+                {scanId && (
+                  <AiExplanationSection
+                    key={activeSelected.id}
+                    finding={activeSelected}
+                    scanId={scanId}
+                    isAiGlobalEnabled={isAiGlobalEnabled}
+                    userOptIn={userOptIn}
+                    onUserOptInChange={setUserOptIn}
+                    aiProviderName={AI_PROVIDER_NAME}
+                  />
+                )}
 
                 {/* Collapsed-by-default "AI fix prompt" with ONE copy button */}
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]/50 overflow-hidden">

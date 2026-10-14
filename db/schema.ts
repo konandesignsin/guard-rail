@@ -34,6 +34,8 @@ export const users = pgTable("users", {
     .default(false)
     .notNull(),
   onboardingDismissed: boolean("onboarding_dismissed").default(false).notNull(),
+  aiOptIn: boolean("ai_opt_in").default(false).notNull(),
+  aiOptInAt: timestamp("ai_opt_in_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -96,6 +98,45 @@ export const scanFiles = pgTable("scan_files", {
   path: text("path").notNull(),
   bytes: integer("bytes").notNull().default(0),
   findingCount: integer("finding_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const aiExplanations = pgTable("ai_explanations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cacheKey: text("cache_key").notNull().unique(),
+  ruleId: text("rule_id").notNull(),
+  promptVersion: text("prompt_version").notNull(),
+  verdict: text("verdict").notNull(),
+  confidence: text("confidence").notNull(),
+  summary: text("summary").notNull(),
+  whyItMatters: text("why_it_matters").notNull(),
+  fixSteps: text("fix_steps").notNull(), // JSON array of strings
+  fixedCode: text("fixed_code"),
+  rawResponse: text("raw_response").notNull(), // validated JSON representation
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const aiUsage = pgTable("ai_usage", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  date: date("date").notNull(),
+  requestCount: integer("request_count").default(0).notNull(),
+});
+
+export const aiExplanationFeedback = pgTable("ai_explanation_feedback", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  findingId: text("finding_id").notNull(),
+  cacheKey: text("cache_key"),
+  feedback: text("feedback").notNull(), // 'up' | 'down'
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

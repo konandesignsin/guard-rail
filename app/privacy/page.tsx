@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/app/components/legal-page";
 import {
+  AI_PROVIDER_NAME,
   CONTACT_EMAIL,
   GRIEVANCE_OFFICER,
   LEGAL_EFFECTIVE_DATE,
@@ -28,10 +29,11 @@ export default function PrivacyPage() {
         <ol className="mt-3 grid gap-1.5 font-mono text-xs sm:grid-cols-2">
           <li><a href="#data" className="hover:text-[var(--fg)]">1. Data we collect</a></li>
           <li><a href="#purposes" className="hover:text-[var(--fg)]">2. Why we use it</a></li>
-          <li><a href="#processors" className="hover:text-[var(--fg)]">3. Service processors</a></li>
-          <li><a href="#retention" className="hover:text-[var(--fg)]">4. Retention</a></li>
-          <li><a href="#rights" className="hover:text-[var(--fg)]">5. Your rights</a></li>
-          <li><a href="#grievance" className="hover:text-[var(--fg)]">6. Grievance contact</a></li>
+          <li><a href="#ai-explanations" className="hover:text-[var(--fg)]">3. AI explanations</a></li>
+          <li><a href="#processors" className="hover:text-[var(--fg)]">4. Service processors</a></li>
+          <li><a href="#retention" className="hover:text-[var(--fg)]">5. Retention</a></li>
+          <li><a href="#rights" className="hover:text-[var(--fg)]">6. Your rights</a></li>
+          <li><a href="#grievance" className="hover:text-[var(--fg)]">7. Grievance contact</a></li>
         </ol>
       </nav>
 
@@ -54,6 +56,16 @@ export default function PrivacyPage() {
           <li>Associate repository URLs and scan results with your account.</li>
           <li>Send service or account emails when applicable.</li>
         </ul>
+      </section>
+
+      <section id="ai-explanations" className="scroll-mt-20">
+        <h2 className={sectionHeading}>3. AI explanations</h2>
+        <p className="mt-3">
+          AI explanations are strictly optional and disabled by default. If you choose to enable AI explanations and click &ldquo;Explain with AI&rdquo; on a finding, Guardrail sends a redacted snippet of approximately 10 lines of code surrounding the finding to {AI_PROVIDER_NAME} to produce an advisory explanation.
+        </p>
+        <p className="mt-3">
+          The code snippet is redacted to remove common secret patterns and known sensitive values before transmission. {AI_PROVIDER_NAME} processes this snippet solely to generate the requested explanation. No full files or other repository contents leave Guardrail.
+        </p>
       </section>
 
       <section id="processors" className="scroll-mt-20">

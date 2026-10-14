@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/app/components/legal-page";
-import { CONTACT_EMAIL, LEGAL_EFFECTIVE_DATE, OWNER_NAME } from "@/lib/legal";
+import { AI_PROVIDER_NAME, CONTACT_EMAIL, LEGAL_EFFECTIVE_DATE, OWNER_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Disclaimer | Guardrail",
@@ -20,6 +20,13 @@ export default function DisclaimerPage() {
         <h2 className={sectionHeading}>Automated results</h2>
         <p className="mt-3">
           Guardrail uses automated checks. Its findings and suggested fixes are generated from those checks and may not reflect every detail of your code or system.
+        </p>
+      </section>
+
+      <section>
+        <h2 className={sectionHeading}>AI explanations</h2>
+        <p className="mt-3">
+          AI-generated explanations and suggested fixes are advisory only and are provided by {AI_PROVIDER_NAME}. AI explanations are optional, off by default, and generated using a redacted snippet of code. AI can make mistakes, hallucinate explanations, or propose non-working or insecure code. AI explanations never alter your scan score, hide findings, or modify severity levels. Always review and verify AI-generated suggestions before applying them.
         </p>
       </section>
 

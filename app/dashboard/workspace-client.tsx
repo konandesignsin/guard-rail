@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
-import { Logo } from "@/app/components/logo";
+import { motion } from "motion/react";
 import { ScanBox } from "@/app/dashboard/scan-box";
 import { ScoreRing } from "@/app/dashboard/score-ring";
 import { CommandPalette, type CommandItem } from "@/app/dashboard/command-palette";
@@ -49,7 +48,6 @@ interface WorkspaceLayoutProps {
 
 export function WorkspaceClient({ userEmail, scans, stats, onboarding }: WorkspaceLayoutProps) {
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isStartingExample, setIsStartingExample] = useState(false);
   const [exampleError, setExampleError] = useState("");
@@ -60,9 +58,6 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
 
   const showPreviewRoutes = process.env.NEXT_PUBLIC_SHOW_PREVIEW_ROUTES === "true";
 
-  // Global keyboard shortcuts:
-  // - '/' focuses the command-bar input
-  // - Ctrl+K / Cmd+K opens the Command Palette
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -88,9 +83,7 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     setIsStartingExample(true);
     setExampleError("");
     try {
-      const res = await fetch("/api/scan/example", {
-        method: "POST",
-      });
+      const res = await fetch("/api/scan/example", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setExampleError(data.error || "Failed to start example scan.");
@@ -107,7 +100,6 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
   async function handleDismissOnboarding() {
     setIsDismissingOnboarding(true);
     setOnboardingError("");
-
     try {
       const response = await fetch("/api/onboarding/dismiss", { method: "POST" });
       if (!response.ok) {
@@ -122,7 +114,6 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     }
   }
 
-  // Format relative time helper
   function formatTimeAgo(isoString: string) {
     const date = new Date(isoString);
     const now = new Date();
@@ -137,7 +128,6 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  // Build command palette items
   const commandItems: CommandItem[] = [
     {
       id: "cmd-new-scan",
@@ -166,7 +156,6 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     });
   }
 
-  // Add recent scans to command palette
   scans.slice(0, 8).forEach((scan) => {
     commandItems.push({
       id: `scan-${scan.id}`,
@@ -185,517 +174,571 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
   const completedOnboardingSteps = onboardingSteps.filter((step) => step.done).length;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--bg)] text-[var(--fg)] font-sans">
-      {/* Mobile Header Bar */}
-      <div className="md:hidden flex h-12 w-full items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 z-30 fixed top-0 left-0">
-        <Logo size="sm" />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCommandPaletteOpen(true)}
-            className="rounded p-1.5 text-[var(--muted)] hover:text-[var(--fg)]"
-            aria-label="Open command palette"
+    <>
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10 space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight text-[var(--fg)]">
+            What do you want to check?
+          </h1>
+          <p className="mt-2 text-sm md:text-base text-[var(--muted)]">
+            Paste a repository URL or select an existing project. We check your files in memory and never store your code. Optional AI explanations send a redacted snippet to the provider.
+          </p>
+        </motion.div>
+
+        {/* Onboarding card */}
+        {showOnboarding && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 md:p-6 shadow-sm"
           >
-            <kbd className="rounded border border-[var(--border)] bg-[var(--surface-subtle)] px-1.5 py-0.5 font-mono text-[10px]">
-              ⌘K
-            </kbd>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="rounded p-1 text-[var(--muted)] hover:text-[var(--fg)]"
-            aria-label="Toggle navigation menu"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
-          </button>
-          <UserButton />
-        </div>
-      </div>
-
-      {/* Left Sidebar */}
-      <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-200 md:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0 pt-12 md:pt-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        {/* Workspace Brand / Header */}
-        <div className="flex h-12 items-center justify-between border-b border-[var(--border)] px-4">
-          <Logo size="sm" />
-          <span className="rounded bg-[var(--surface-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted)]">
-            workspace
-          </span>
-        </div>
-
-        {/* Sidebar Actions: New Scan + Command Palette */}
-        <div className="p-3 space-y-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              inputRef.current?.focus();
-              setMobileMenuOpen(false);
-            }}
-            className="flex w-full items-center justify-between rounded-md bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--fg)] transition-colors cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <svg className="h-3.5 w-3.5 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>New scan</span>
-            </span>
-            <kbd className="rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted)]">
-              /
-            </kbd>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCommandPaletteOpen(true);
-              setMobileMenuOpen(false);
-            }}
-            className="flex w-full items-center justify-between rounded-md bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span>Command Palette</span>
-            </span>
-            <kbd className="rounded border border-[var(--border)] bg-[var(--surface-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-subtle)]">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-
-        {/* Sidebar Nav & History List */}
-        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-4">
-          <div>
-            <div className="flex items-center justify-between px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted-subtle)]">
-              <span>History</span>
-              <span className="text-[10px]">{scans.length}</span>
-            </div>
-
-            {scans.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-[var(--muted-subtle)]">
-                No past scans yet.
-              </p>
-            ) : (
-              <div className="mt-1 space-y-0.5">
-                {scans.map((s) => {
-                  const score = s.score ?? 0;
-                  const scoreColor =
-                    score >= 90
-                      ? "text-[var(--cleared-green)]"
-                      : score >= 70
-                      ? "text-[var(--squiggle-amber)]"
-                      : "text-[var(--squiggle-red)]";
-
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/dashboard/scans/${s.id}`}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="group flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--fg)] transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`font-mono text-[11px] font-bold ${scoreColor}`}>
-                          {score}
-                        </span>
-                        <span className="truncate max-w-[130px]">
-                          {s.repoName ?? "Scan"}
-                        </span>
-                      </div>
-                      <span className="font-mono text-[10px] text-[var(--muted-subtle)] group-hover:text-[var(--muted)]">
-                        {formatTimeAgo(s.createdAt)}
-                      </span>
-                    </Link>
-                  );
-                })}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-medium text-[var(--fg)]">Getting started</h2>
+                  <span className="font-mono text-xs text-[var(--muted-subtle)]">
+                    {completedOnboardingSteps}/3
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Complete your first security review in three steps.
+                </p>
               </div>
-            )}
-          </div>
-
-          <div>
-            <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-[var(--muted-subtle)]">
-              Quick actions
-            </div>
-            <div className="mt-1 space-y-1 px-2 text-xs text-[var(--muted)]">
               <button
                 type="button"
-                onClick={handleRunExample}
-                disabled={isStartingExample}
-                className="w-full text-left flex items-center justify-between py-1 hover:text-[var(--fg)] transition-colors cursor-pointer"
+                onClick={handleDismissOnboarding}
+                disabled={isDismissingOnboarding}
+                aria-label="Dismiss onboarding"
+                className="rounded-md p-1.5 text-[var(--muted-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--fg)] disabled:opacity-50 transition-colors"
               >
-                <span>Try an example</span>
-                <span className="font-mono text-[10px] text-[var(--squiggle-red)]">leaky</span>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-
-              {showPreviewRoutes && (
-                <Link
-                  href="/dashboard/preview-report"
-                  className="flex items-center justify-between py-1 hover:text-[var(--fg)] transition-colors"
-                >
-                  <span>Sample report</span>
-                  <span className="font-mono text-[10px] text-[var(--muted-subtle)]">demo</span>
-                </Link>
-              )}
             </div>
-          </div>
-        </div>
 
-        {/* Sidebar Footer with Clerk UserButton */}
-        <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--surface)] p-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <UserButton />
-            {userEmail && (
-              <span className="truncate text-xs text-[var(--muted)]">
-                {userEmail}
-              </span>
+            <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+              {onboardingSteps.map((step, index) => (
+                <li
+                  key={step.label}
+                  className="flex items-center gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-4 py-3"
+                >
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border font-mono text-xs ${
+                      step.done
+                        ? "border-[var(--cleared-green)]/40 bg-[var(--cleared-green)]/10 text-[var(--cleared-green)]"
+                        : "border-[var(--border)] text-[var(--muted)]"
+                    }`}
+                  >
+                    {step.done ? (
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span className={`text-sm ${step.done ? "text-[var(--muted)] line-through" : "text-[var(--fg)]"}`}>
+                    {step.label}
+                  </span>
+                </li>
+              ))}
+            </ol>
+
+            {onboardingError && (
+              <p className="mt-4 text-sm text-[var(--squiggle-red)]">{onboardingError}</p>
             )}
+          </motion.section>
+        )}
+
+        {/* Scan input */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <ScanBox inputRef={inputRef} />
+        </motion.div>
+
+        {exampleError && (
+          <div className="rounded-lg border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] p-4 text-sm text-[var(--squiggle-red)]">
+            {exampleError}
           </div>
-        </div>
-      </aside>
+        )}
 
-      {/* Main Workspace Area */}
-      <main className="flex-1 flex flex-col h-full overflow-y-auto pt-12 md:pt-0">
-        {/* Top Command Bar */}
-        <header className="hidden md:flex h-12 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-6">
-          <div className="flex items-center gap-3 text-xs font-mono text-[var(--muted)]">
-            <span className="text-[var(--fg)] font-medium">dashboard</span>
-            <span>/</span>
-            <span>scanner</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCommandPaletteOpen(true)}
-              className="flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--surface-subtle)] px-2.5 py-1 text-xs font-mono text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--border-subtle)] transition-colors cursor-pointer"
-            >
-              <span>Search commands</span>
-              <kbd className="rounded bg-[var(--surface)] px-1.5 py-0.2 text-[10px] text-[var(--muted-subtle)]">
-                Ctrl+K
-              </kbd>
-            </button>
-
-            {showPreviewRoutes && (
-              <Link
-                href="/dashboard/preview-report"
-                className="text-xs font-mono text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-              >
-                preview report &rarr;
-              </Link>
-            )}
-          </div>
-        </header>
-
-        {/* Workspace Central Content */}
-        <div className="flex-1 max-w-4xl w-full mx-auto px-5 py-8 md:py-10 space-y-8">
-          {/* Header */}
-          <div>
-            <h1 className="font-display text-2xl md:text-3xl font-normal tracking-tight text-[var(--fg)]">
-              What do you want to check?
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-[var(--muted)]">
-              Paste a repository URL or select an existing project. We check your files in memory and never store your code.
+        {/* Empty state */}
+        {scans.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="space-y-6 pt-4"
+          >
+            <p className="text-center text-sm text-[var(--muted)]">
+              No scans yet. Add a repository above or run the example to create your first report.
             </p>
-          </div>
-
-          {showOnboarding && (
-            <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8 space-y-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-medium text-[var(--fg)]">Getting started</h2>
-                    <span className="font-mono text-[10px] text-[var(--muted-subtle)]">
-                      {completedOnboardingSteps}/3
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--muted)]">
-                    Complete your first security review in three steps.
+                  <h2 className="font-display text-xl text-[var(--fg)] font-medium">
+                    Try a sample audit
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    Test Guardrail instantly against a small built-in leaky sample project.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={handleDismissOnboarding}
-                  disabled={isDismissingOnboarding}
-                  aria-label="Dismiss onboarding"
-                  className="rounded p-1 text-[var(--muted-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--fg)] disabled:opacity-50 transition-colors"
+                  onClick={handleRunExample}
+                  disabled={isStartingExample}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--fg)] hover:bg-white text-[var(--bg)] px-5 py-2.5 text-sm font-medium transition-all disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  {isStartingExample ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--bg)] border-t-transparent" />
+                      <span>Running sample audit...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Try an example</span>
+                      <span>&rarr;</span>
+                    </>
+                  )}
                 </button>
               </div>
 
-              <ol className="mt-4 grid gap-2 sm:grid-cols-3">
-                {onboardingSteps.map((step, index) => (
-                  <li
-                    key={step.label}
-                    className="flex items-center gap-2 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-2.5"
-                  >
-                    <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] ${
-                        step.done
-                          ? "border-[var(--cleared-green)]/40 bg-[var(--cleared-green)]/10 text-[var(--cleared-green)]"
-                          : "border-[var(--border)] text-[var(--muted)]"
-                      }`}
-                    >
-                      {step.done ? (
-                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        index + 1
-                      )}
+              <div className="space-y-3">
+                <span className="font-mono text-xs uppercase tracking-wider text-[var(--muted-subtle)]">
+                  Example finding preview
+                </span>
+
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-5 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="rounded bg-[var(--squiggle-red-subtle)] text-[var(--squiggle-red)] border border-[var(--squiggle-red)]/30 px-2 py-1 text-xs font-bold">
+                      HIGH SEVERITY
                     </span>
-                    <span className={`text-xs ${step.done ? "text-[var(--muted)] line-through" : "text-[var(--fg)]"}`}>
-                      {step.label}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-
-              {onboardingError && (
-                <p className="mt-3 text-xs text-[var(--squiggle-red)]">{onboardingError}</p>
-              )}
-            </section>
-          )}
-
-          {/* Command-Bar Style Scan Input */}
-          <ScanBox inputRef={inputRef} />
-
-          {exampleError && (
-            <div className="rounded-md border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] p-3 text-xs text-[var(--squiggle-red)]">
-              {exampleError}
-            </div>
-          )}
-
-          {/* FIRST RUN EMPTY STATE: When user has 0 scans */}
-          {scans.length === 0 ? (
-            <div className="space-y-6 pt-2">
-              <p className="text-center text-xs text-[var(--muted)]">
-                No scans yet. Add a repository above or run the example to create your first report.
-              </p>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 space-y-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
-                  <div>
-                    <h2 className="font-display text-lg text-[var(--fg)] font-medium">
-                      Try a sample audit
-                    </h2>
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      Test Guardrail instantly against a small built-in leaky sample project.
-                    </p>
+                    <span className="text-[var(--muted)]">src/lib/supabase.ts : line 5</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleRunExample}
-                    disabled={isStartingExample}
-                    className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--fg)] hover:bg-white text-[var(--bg)] px-4 py-2 font-mono text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm shrink-0"
-                  >
-                    {isStartingExample ? (
-                      <>
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--bg)] border-t-transparent" />
-                        <span>Running sample audit...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>⚡ Try an example</span>
-                        <span className="font-normal text-[11px] opacity-75">&rarr;</span>
-                      </>
-                    )}
-                  </button>
-                </div>
 
-                {/* Sample finding preview with squiggle and note in the empty area */}
-                <div className="space-y-3">
-                  <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-subtle)]">
-                    Example finding preview
-                  </span>
-
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="rounded bg-[var(--squiggle-red-subtle)] text-[var(--squiggle-red)] border border-[var(--squiggle-red)]/30 px-2 py-0.5 text-[10px] font-bold">
-                        HIGH SEVERITY
+                  <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg)] p-4 font-mono text-xs">
+                    <p className="text-[var(--muted-subtle)] select-none">3  export const supabase = createClient(</p>
+                    <p className="text-[var(--muted-subtle)] select-none">4    process.env.NEXT_PUBLIC_SUPABASE_URL,</p>
+                    <p className="text-[var(--fg)] font-medium pl-3">
+                      <span className="squiggle-red">
+                        &quot;eyJhbGciOiJIUzI1NiIsInR5cCI6...service_role_secret_key&quot;
                       </span>
-                      <span className="text-[var(--muted)]">src/lib/supabase.ts : line 5</span>
-                    </div>
-
-                    <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg)] p-3 font-mono text-xs">
-                      <p className="text-[var(--muted-subtle)] select-none">3  export const supabase = createClient(</p>
-                      <p className="text-[var(--muted-subtle)] select-none">4    process.env.NEXT_PUBLIC_SUPABASE_URL,</p>
-                      <p className="text-[var(--fg)] font-medium pl-3">
-                        <span className="squiggle-red">
-                          &quot;eyJhbGciOiJIUzI1NiIsInR5cCI6...service_role_secret_key&quot;
-                        </span>
-                      </p>
-                      <p className="text-[var(--muted-subtle)] select-none">6  );</p>
-                    </div>
-
-                    <p className="text-xs text-[var(--fg)] leading-relaxed">
-                      Plain note: Administrative service_role keys bypass database Row-Level Security. Exposing them in frontend bundles allows any visitor to read or delete all customer data.
                     </p>
+                    <p className="text-[var(--muted-subtle)] select-none">6  );</p>
                   </div>
+
+                  <p className="text-sm text-[var(--fg)] leading-relaxed">
+                    Plain note: Administrative service_role keys bypass database Row-Level Security. Exposing them in frontend bundles allows any visitor to read or delete all customer data.
+                  </p>
                 </div>
               </div>
             </div>
-          ) : (
-            /* SUMMARY AND LIST: When user has 1+ scans */
-            <div className="space-y-8 pt-2">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {/* Card 1: Latest score ring */}
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--muted)]">
-                      Latest Score
-                    </span>
-                    <p className="text-xs text-[var(--muted-subtle)]">
-                      Most recent scan
-                    </p>
-                    {stats?.trendDelta != null && (
-                      <div className="pt-1 flex items-center gap-1 font-mono text-[11px]">
-                        <span
-                          className={
-                            stats.trendDelta > 0
-                              ? "text-[var(--cleared-green)]"
-                              : stats.trendDelta < 0
-                              ? "text-[var(--squiggle-red)]"
-                              : "text-[var(--muted)]"
-                          }
-                        >
-                          {stats.trendDelta > 0
-                            ? `+${stats.trendDelta}`
-                            : stats.trendDelta}{" "}
-                          vs previous
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {stats?.latestScore != null && (
-                    <ScoreRing score={stats.latestScore} size={64} strokeWidth={6} />
-                  )}
-                </div>
-
-                {/* Card 2: High Severity Count */}
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--muted)]">
-                    High Risks
-                  </span>
-                  <div className="my-2">
-                    <span className="font-mono text-2xl font-bold text-[var(--squiggle-red)]">
-                      {stats?.highCount ?? 0}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted-subtle)] font-mono">
-                    Critical leaks & bypasses
-                  </span>
-                </div>
-
-                {/* Card 3: Medium & Low Counts */}
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--muted)]">
-                    Med / Low Risks
-                  </span>
-                  <div className="my-2 flex items-baseline gap-2 font-mono">
-                    <span className="text-2xl font-bold text-[var(--squiggle-amber)]">
-                      {stats?.mediumCount ?? 0}
-                    </span>
-                    <span className="text-xs text-[var(--muted-subtle)]">/</span>
-                    <span className="text-lg text-[var(--cleared-green)]">
-                      {stats?.lowCount ?? 0}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted-subtle)] font-mono">
-                    Medium and low notices
-                  </span>
-                </div>
-
-                {/* Card 4: Total Scans */}
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--muted)]">
-                    Total Audits
-                  </span>
-                  <div className="my-2">
-                    <span className="font-mono text-2xl font-bold text-[var(--fg)]">
-                      {stats?.totalScans ?? scans.length}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted-subtle)] font-mono">
-                    Completed repository scans
-                  </span>
-                </div>
-              </div>
-
-              {/* Recent audits clean list */}
-              <section className="space-y-3">
-                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 text-xs font-mono">
-                  <span className="text-[var(--fg)] font-medium">Recent audits</span>
-                  <span className="text-[var(--muted)]">{scans.length} total</span>
-                </div>
-
-                <div className="divide-y divide-[var(--border)] border border-[var(--border)] rounded-lg bg-[var(--surface)] overflow-hidden shadow-xs">
-                  {scans.map((scan) => {
-                    const score = scan.score ?? 0;
-                    const scoreColor =
-                      score >= 90
-                        ? "text-[var(--cleared-green)] border-[var(--cleared-green)]/30"
-                        : score >= 70
-                        ? "text-[var(--squiggle-amber)] border-[var(--squiggle-amber)]/30"
-                        : "text-[var(--squiggle-red)] border-[var(--squiggle-red)]/30";
-
-                    return (
-                      <Link
-                        key={scan.id}
-                        href={`/dashboard/scans/${scan.id}`}
-                        className="group flex items-center justify-between px-4 py-3 text-xs hover:bg-[var(--surface-hover)] transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span
-                            className={`flex h-8 w-8 items-center justify-center rounded border font-mono text-xs font-bold ${scoreColor}`}
-                          >
-                            {score}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-mono text-xs font-medium text-[var(--fg)] truncate">
-                              {scan.repoName ?? "Repository"}
-                            </p>
-                            <div className="flex items-center gap-3 text-[11px] text-[var(--muted)]">
-                              <span>{formatTimeAgo(scan.createdAt)}</span>
-                              {scan.findingCounts && (
-                                <span className="font-mono text-[10px] text-[var(--muted-subtle)]">
-                                  {scan.findingCounts.total} findings (
-                                  <span className="text-[var(--squiggle-red)]">{scan.findingCounts.high}h</span>/
-                                  <span className="text-[var(--squiggle-amber)]">{scan.findingCounts.medium}m</span>
-                                  )
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <span className="font-mono text-[11px] text-[var(--muted)] group-hover:text-[var(--fg)] transition-colors flex items-center gap-1">
-                          <span>Open report</span>
-                          <span>&rarr;</span>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
+          </motion.div>
+        ) : (
+          /* Dashboard content with stats and charts */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="space-y-8 pt-4"
+          >
+            {/* Stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Projects"
+                value={stats?.totalScans ?? scans.length}
+                icon={
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                }
+              />
+              <StatCard
+                label="Open high risks"
+                value={stats?.highCount ?? 0}
+                icon={
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                }
+                valueColor="text-[var(--squiggle-red)]"
+              />
+              <StatCard
+                label="Average score"
+                value={stats?.latestScore ?? 0}
+                suffix="/100"
+                icon={
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                }
+              />
+              <StatCard
+                label="Fixed since last scan"
+                value={stats?.trendDelta && stats.trendDelta > 0 ? stats.trendDelta : 0}
+                icon={
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                }
+                valueColor="text-[var(--cleared-green)]"
+              />
             </div>
-          )}
-        </div>
-      </main>
 
-      {/* Accessible Command Palette Modal */}
+            {/* Charts row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ScoreTrendChart scans={scans} />
+              <SeverityBreakdownChart stats={stats} />
+            </div>
+
+            {/* Project grid */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-[var(--fg)]">Recent projects</h2>
+                <Link
+                  href="/dashboard/projects"
+                  className="text-sm text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                >
+                  View all &rarr;
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {scans.slice(0, 6).map((scan) => (
+                  <ProjectCard key={scan.id} scan={scan} formatTimeAgo={formatTimeAgo} />
+                ))}
+              </div>
+            </div>
+
+            {/* Recent activity timeline */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-medium text-[var(--fg)]">Recent activity</h2>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
+                {scans.slice(0, 5).map((scan, index) => (
+                  <TimelineItem
+                    key={scan.id}
+                    scan={scan}
+                    formatTimeAgo={formatTimeAgo}
+                    isLast={index === Math.min(4, scans.length - 1)}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
       <CommandPalette
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         commands={commandItems}
       />
+    </>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  suffix,
+  icon,
+  valueColor = "text-[var(--fg)]",
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  icon: React.ReactNode;
+  valueColor?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-3"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-[var(--muted)]">{label}</span>
+        <span className="text-[var(--muted)]">{icon}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className={`text-3xl font-bold font-mono tabular-nums ${valueColor}`}>
+          {value}
+        </span>
+        {suffix && <span className="text-sm text-[var(--muted)]">{suffix}</span>}
+      </div>
+    </motion.div>
+  );
+}
+
+function ScoreTrendChart({ scans }: { scans: ScanItem[] }) {
+  const recentScans = scans.slice(0, 10).reverse();
+  const maxScore = 100;
+  const chartHeight = 200;
+  const chartWidth = 600;
+  const padding = 40;
+
+  const points = recentScans.map((scan, index) => {
+    const x = padding + (index / Math.max(recentScans.length - 1, 1)) * (chartWidth - 2 * padding);
+    const y = chartHeight - padding - ((scan.score ?? 0) / maxScore) * (chartHeight - 2 * padding);
+    return { x, y, scan };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4"
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-medium text-[var(--fg)]">Score trend</h3>
+        <span className="text-xs text-[var(--muted)]">Last {recentScans.length} scans</span>
+      </div>
+      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto">
+        {/* Grid lines */}
+        {[0, 25, 50, 75, 100].map((score) => {
+          const y = chartHeight - padding - (score / maxScore) * (chartHeight - 2 * padding);
+          return (
+            <g key={score}>
+              <line
+                x1={padding}
+                y1={y}
+                x2={chartWidth - padding}
+                y2={y}
+                stroke="var(--border)"
+                strokeWidth={1}
+                strokeDasharray={score === 0 ? "0" : "4 4"}
+              />
+              <text
+                x={padding - 8}
+                y={y + 4}
+                textAnchor="end"
+                className="fill-[var(--muted-subtle)] text-xs"
+                style={{ fontSize: "10px" }}
+              >
+                {score}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Line */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke="var(--squiggle-red)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Points */}
+        {points.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={4}
+            fill="var(--squiggle-red)"
+            stroke="var(--surface)"
+            strokeWidth={2}
+          />
+        ))}
+      </svg>
+    </motion.div>
+  );
+}
+
+function SeverityBreakdownChart({ stats }: { stats?: DashboardStats }) {
+  const high = stats?.highCount ?? 0;
+  const medium = stats?.mediumCount ?? 0;
+  const low = stats?.lowCount ?? 0;
+  const total = high + medium + low;
+
+  const segments = [
+    { label: "High", value: high, color: "var(--squiggle-red)" },
+    { label: "Medium", value: medium, color: "var(--squiggle-amber)" },
+    { label: "Low", value: low, color: "var(--cleared-green)" },
+  ];
+
+  let cumulativePercent = 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4"
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-medium text-[var(--fg)]">Severity breakdown</h3>
+        <span className="text-xs text-[var(--muted)]">{total} total findings</span>
+      </div>
+      <div className="flex items-center justify-center py-4">
+        <svg viewBox="0 0 100 100" className="w-48 h-48">
+          {total === 0 ? (
+            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" strokeWidth="12" />
+          ) : (
+            segments.map((segment) => {
+              const percent = (segment.value / total) * 100;
+              const startPercent = cumulativePercent;
+              cumulativePercent += percent;
+
+              const startAngle = (startPercent / 100) * 360 - 90;
+              const endAngle = ((startPercent + percent) / 100) * 360 - 90;
+
+              const startRad = (startAngle * Math.PI) / 180;
+              const endRad = (endAngle * Math.PI) / 180;
+
+              const x1 = 50 + 40 * Math.cos(startRad);
+              const y1 = 50 + 40 * Math.sin(startRad);
+              const x2 = 50 + 40 * Math.cos(endRad);
+              const y2 = 50 + 40 * Math.sin(endRad);
+
+              const largeArcFlag = percent > 50 ? 1 : 0;
+
+              const d = `M ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+
+              return (
+                <path
+                  key={segment.label}
+                  d={d}
+                  fill="none"
+                  stroke={segment.color}
+                  strokeWidth="12"
+                  strokeLinecap="butt"
+                />
+              );
+            })
+          )}
+          <text
+            x="50"
+            y="50"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="fill-[var(--fg)] font-bold"
+            style={{ fontSize: "16px" }}
+          >
+            {total}
+          </text>
+        </svg>
+      </div>
+      <div className="space-y-2">
+        {segments.map((segment) => (
+          <div key={segment.label} className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: segment.color }} />
+              <span className="text-[var(--muted)]">{segment.label}</span>
+            </div>
+            <span className="font-mono font-medium text-[var(--fg)]">{segment.value}</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function ProjectCard({ scan, formatTimeAgo }: { scan: ScanItem; formatTimeAgo: (iso: string) => string }) {
+  const score = scan.score ?? 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ y: -2 }}
+      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4 cursor-pointer hover:border-[var(--border-subtle)] transition-colors"
+    >
+      <Link href={`/dashboard/scans/${scan.id}`} className="block">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium text-[var(--fg)] truncate">
+              {scan.repoName ?? "Repository"}
+            </h3>
+            <p className="text-xs text-[var(--muted)] mt-1">{formatTimeAgo(scan.createdAt)}</p>
+          </div>
+          <ScoreRing score={score} size={48} strokeWidth={4} />
+        </div>
+
+        {scan.findingCounts && (
+          <div className="flex items-center gap-2 pt-2">
+            {scan.findingCounts.high > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--squiggle-red-subtle)] px-2 py-1 text-xs font-medium text-[var(--squiggle-red)]">
+                {scan.findingCounts.high} high
+              </span>
+            )}
+            {scan.findingCounts.medium > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--squiggle-amber-subtle)] px-2 py-1 text-xs font-medium text-[var(--squiggle-amber)]">
+                {scan.findingCounts.medium} med
+              </span>
+            )}
+            {scan.findingCounts.low > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--cleared-green-subtle)] px-2 py-1 text-xs font-medium text-[var(--cleared-green)]">
+                {scan.findingCounts.low} low
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="pt-2">
+          <span className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors">
+            View report &rarr;
+          </span>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+function TimelineItem({
+  scan,
+  formatTimeAgo,
+  isLast,
+}: {
+  scan: ScanItem;
+  formatTimeAgo: (iso: string) => string;
+  isLast: boolean;
+}) {
+  const score = scan.score ?? 0;
+
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-subtle)] border border-[var(--border)]">
+          <svg className="h-4 w-4 text-[var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        {!isLast && <div className="w-px flex-1 bg-[var(--border)] mt-2" />}
+      </div>
+      <div className="flex-1 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[var(--fg)] truncate">
+              {scan.repoName ?? "Repository scan"}
+            </p>
+            <p className="text-xs text-[var(--muted)] mt-1">{formatTimeAgo(scan.createdAt)}</p>
+          </div>
+          <span className="font-mono text-sm font-bold text-[var(--fg)]">{score}</span>
+        </div>
+        {scan.findingCounts && scan.findingCounts.total > 0 && (
+          <p className="text-xs text-[var(--muted)] mt-2">
+            {scan.findingCounts.total} findings ({scan.findingCounts.high}h / {scan.findingCounts.medium}m / {scan.findingCounts.low}l)
+          </p>
+        )}
+      </div>
     </div>
   );
 }

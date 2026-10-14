@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Dark-first foundations */
+  /* Dark theme (default) */
   --bg: #08090d;
   --bg-gradient-top: #0d0f17;
   --surface: #11131a;
@@ -10,19 +10,10 @@
   --border: #222634;
   --border-subtle: #1a1d28;
 
-  /* Lighter sections (for lower sections of the page) */
-  --light-bg: #f5f6f8;
-  --light-surface: #ffffff;
-  --light-border: #e2e4ea;
-  --light-fg: #0c0d12;
-  --light-muted: #5e6474;
-
-  /* Typography */
   --fg: #ededf0;
   --muted: #8e95a5;
   --muted-subtle: #555c6d;
 
-  /* Accent tokens (Ink, off-white, one red accent with soft glows) */
   --squiggle-red: #e5484d;
   --squiggle-red-subtle: rgba(229, 72, 77, 0.12);
   --squiggle-red-glow: rgba(229, 72, 77, 0.28);
@@ -31,11 +22,36 @@
   --cleared-green: #3dd68c;
   --cleared-green-subtle: rgba(61, 214, 140, 0.12);
 
-  /* Legacy mappings */
   --ink: var(--fg);
   --paper: var(--bg);
   --background: var(--bg);
   --foreground: var(--fg);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f5f6f8;
+  --bg-gradient-top: #ffffff;
+  --surface: #ffffff;
+  --surface-subtle: #f8f9fa;
+  --surface-hover: #f0f1f3;
+  --border: #e2e4ea;
+  --border-subtle: #ebedf2;
+
+  --fg: #0c0d12;
+  --muted: #5e6474;
+  --muted-subtle: #9ba1b0;
+
+  --squiggle-red: #dc3545;
+  --squiggle-red-subtle: rgba(220, 53, 69, 0.08);
+  --squiggle-red-glow: rgba(220, 53, 69, 0.15);
+  --squiggle-amber: #d97706;
+  --squiggle-amber-subtle: rgba(217, 119, 6, 0.08);
+  --cleared-green: #16a34a;
+  --cleared-green-subtle: rgba(22, 163, 74, 0.08);
+
+  color-scheme: light;
 }
 
 @theme inline {
@@ -67,7 +83,7 @@ body {
   color: var(--fg);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
-  color-scheme: dark;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
