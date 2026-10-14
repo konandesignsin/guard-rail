@@ -6,7 +6,6 @@ import { ScoreRing, getScoreRating } from "@/app/dashboard/score-ring";
 import type { HeatMapFile } from "@/app/dashboard/repo-heat-map";
 import { AiExplanationSection } from "@/app/dashboard/ai-explanation-section";
 import { AiChatPanel } from "@/app/dashboard/ai-chat-panel";
-import { FixPromptGenerator } from "@/app/dashboard/fix-prompt-generator";
 import { AI_PROVIDER_NAME } from "@/lib/legal";
 
 export interface FindingReportItem {
@@ -124,8 +123,17 @@ export function SplitReportView({
 
   // Copy feedback states
   const [copiedFindingId, setCopiedFindingId] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
+
+  // All-findings AI prompt generation
+  const [allPrompt, setAllPrompt] = useState<string | null>(null);
+  const [allPromptTitle, setAllPromptTitle] = useState("");
+  const [allPromptWarnings, setAllPromptWarnings] = useState<string[]>([]);
+  const [allPromptLoading, setAllPromptLoading] = useState(false);
+  const [allPromptError, setAllPromptError] = useState<string | null>(null);
+  const [allPromptUsedAI, setAllPromptUsedAI] = useState(false);
+  const [allPromptCopied, setAllPromptCopied] = useState(false);
+  const [allPromptExpanded, setAllPromptExpanded] = useState(false);
 
   // Tooltip states for accessible toggles
   const [showScoreTooltip, setShowScoreTooltip] = useState(false);
@@ -281,20 +289,87 @@ export function SplitReportView({
     filteredFindings[0] ??
     normalizedFindings[0];
 
-  // Copy fix prompt for all findings
-  const handleCopyAll = () => {
-    if (normalizedFindings.length === 0) return;
-    const promptText = [
-      `Review and fix all ${normalizedFindings.length} findings for ${repoName}:`,
-      "",
-      ...normalizedFindings.map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.file}:${f.line} - ${f.title}\n   Fix: ${f.fix}`),
-      "",
-      "Please apply these code fixes systematically and explain each change."
-    ].join("\n");
+  // Generate AI prompt for all findings
+  const handleGenerateAllPrompt = async () => {
+    if (normalizedFindings.length === 0 || !scanId) return;
 
-    navigator.clipboard.writeText(promptText);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2200);
+    if (!isAiGlobalEnabled || !userOptIn) {
+      const staticPrompt = [
+        `Review and fix all ${normalizedFindings.length} findings for ${repoName}:`,
+        "",
+        ...normalizedFindings.map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.file}:${f.line} - ${f.title}\n   Fix: ${f.fix}`),
+        "",
+        "Please apply these code fixes systematically and explain each change."
+      ].join("\n");
+      setAllPrompt(staticPrompt);
+      setAllPromptTitle(`Fix all ${normalizedFindings.length} findings`);
+      setAllPromptUsedAI(false);
+      setAllPromptExpanded(true);
+      return;
+    }
+
+    setAllPromptLoading(true);
+    setAllPromptError(null);
+    setAllPromptExpanded(true);
+
+    try {
+      const res = await fetch("/api/ai/fix-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scanId,
+          findingIds: normalizedFindings.map((f) => f.id),
+          mode: "all",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAllPromptError(data.error || "Failed to generate prompt");
+        const staticFallback = [
+          `Review and fix all ${normalizedFindings.length} findings for ${repoName}:`,
+          "",
+          ...normalizedFindings.map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.file}:${f.line} - ${f.title}\n   Fix: ${f.fix}`),
+          "",
+          "Please apply these code fixes systematically and explain each change."
+        ].join("\n");
+        setAllPrompt(staticFallback);
+        setAllPromptTitle(`Fix all ${normalizedFindings.length} findings`);
+        setAllPromptUsedAI(false);
+        return;
+      }
+
+      setAllPrompt(data.prompt);
+      setAllPromptTitle(data.title);
+      setAllPromptWarnings(data.warnings || []);
+      setAllPromptUsedAI(data.usedAI);
+    } catch {
+      setAllPromptError("Network error. Showing static prompt instead.");
+      const staticFallback = [
+        `Review and fix all ${normalizedFindings.length} findings for ${repoName}:`,
+        "",
+        ...normalizedFindings.map((f, i) => `${i + 1}. [${f.severity.toUpperCase()}] ${f.file}:${f.line} - ${f.title}\n   Fix: ${f.fix}`),
+        "",
+        "Please apply these code fixes systematically and explain each change."
+      ].join("\n");
+      setAllPrompt(staticFallback);
+      setAllPromptTitle(`Fix all ${normalizedFindings.length} findings`);
+      setAllPromptUsedAI(false);
+    } finally {
+      setAllPromptLoading(false);
+    }
+  };
+
+  const handleCopyAllPrompt = async () => {
+    if (!allPrompt) return;
+    try {
+      await navigator.clipboard.writeText(allPrompt);
+      setAllPromptCopied(true);
+      setTimeout(() => setAllPromptCopied(false), 2200);
+    } catch {
+      // clipboard error
+    }
   };
 
   // Copy single finding prompt
@@ -517,18 +592,29 @@ export function SplitReportView({
                 New scan
               </Link>
 
-              {/* ONE Primary button: "Copy fix prompt for all findings" */}
-              <button
-                type="button"
-                onClick={handleCopyAll}
-                disabled={normalizedFindings.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--fg)] hover:opacity-90 disabled:opacity-50 text-[var(--bg)] px-4 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--fg)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] focus-visible:outline-none"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                </svg>
-                <span>{copiedAll ? "✓ Copied prompt for all findings" : "Copy fix prompt for all findings"}</span>
-              </button>
+              {/* Primary button: "Generate one prompt for all findings" (AI) */}
+              {isAiGlobalEnabled && normalizedFindings.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleGenerateAllPrompt}
+                  disabled={allPromptLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--fg)] hover:opacity-90 disabled:opacity-50 text-[var(--bg)] px-4 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--fg)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] focus-visible:outline-none"
+                >
+                  {allPromptLoading ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--bg)] border-t-transparent" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Generate one prompt for all findings</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -688,6 +774,75 @@ export function SplitReportView({
           </div>
         </div>
       </header>
+
+      {/* AI-generated all-findings prompt panel */}
+      {allPromptExpanded && allPrompt && (
+        <div className="border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-[var(--fg)]">{allPromptTitle}</h3>
+                {allPromptUsedAI && (
+                  <span className="text-[10px] font-mono text-[var(--muted)] bg-[var(--surface-subtle)] border border-[var(--border)] px-1.5 py-0.5 rounded">
+                    AI-generated
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAllPromptExpanded(false)}
+                className="text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+
+            {allPromptWarnings.length > 0 && (
+              <div className="rounded-lg border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] p-3">
+                <div className="flex items-start gap-2">
+                  <svg className="h-4 w-4 text-[var(--squiggle-red)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-[var(--squiggle-red)]">Important warnings:</p>
+                    <ul className="mt-1 space-y-1">
+                      {allPromptWarnings.map((w, idx) => (
+                        <li key={idx} className="text-xs text-[var(--squiggle-red)]">{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+              <pre className="whitespace-pre-wrap font-mono text-xs text-[var(--fg)] leading-relaxed select-all">
+                {allPrompt}
+              </pre>
+            </div>
+
+            {allPromptError && (
+              <p className="text-xs text-[var(--squiggle-amber)]">{allPromptError}</p>
+            )}
+
+            <div className="flex items-center justify-between">
+              {allPromptUsedAI && (
+                <span className="text-xs text-[var(--muted)]">Generated with {AI_PROVIDER_NAME}</span>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyAllPrompt}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--fg)] hover:opacity-90 text-[var(--bg)] px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-xs ml-auto focus-visible:ring-2 focus-visible:ring-[var(--fg)] focus-visible:outline-none"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>{allPromptCopied ? "✓ Copied" : "Copy prompt"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 3: COMPACT FILES SCANNED SECTION */}
       <section className="border-b border-[var(--border)] bg-[var(--surface-subtle)]/60">

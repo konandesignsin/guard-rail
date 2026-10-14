@@ -295,7 +295,7 @@ export async function explainFinding(
   let apiKey = "";
 
   if (provider === "gemini") {
-    model = model || "gemini-2.5-flash";
+    model = model || process.env.AI_MODEL || "gemini-3.8-flash";
     apiKey = process.env.GEMINI_API_KEY || "";
   } else if (provider === "groq") {
     apiKey = process.env.GROQ_API_KEY || "";

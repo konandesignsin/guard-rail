@@ -144,6 +144,27 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
       category: "Actions",
       onSelect: () => handleRunExample(),
     },
+    {
+      id: "cmd-nav-scans",
+      title: "View all scans",
+      subtitle: "Navigate to scans history",
+      category: "Actions",
+      onSelect: () => router.push("/dashboard/scans"),
+    },
+    {
+      id: "cmd-nav-projects",
+      title: "View projects",
+      subtitle: "Navigate to projects overview",
+      category: "Actions",
+      onSelect: () => router.push("/dashboard/projects"),
+    },
+    {
+      id: "cmd-nav-settings",
+      title: "Settings",
+      subtitle: "Manage account and AI preferences",
+      category: "Actions",
+      onSelect: () => router.push("/dashboard/settings"),
+    },
   ];
 
   if (showPreviewRoutes) {
