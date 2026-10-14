@@ -24,9 +24,9 @@ export default function DisclaimerPage() {
       </section>
 
       <section>
-        <h2 className={sectionHeading}>AI explanations</h2>
+        <h2 className={sectionHeading}>AI explanations, chat, and fix prompts</h2>
         <p className="mt-3">
-          AI-generated explanations and suggested fixes are advisory only and are provided by {AI_PROVIDER_NAME}. AI explanations are optional, off by default, and generated using a redacted snippet of code. AI can make mistakes, hallucinate explanations, or propose non-working or insecure code. AI explanations never alter your scan score, hide findings, or modify severity levels. Always review and verify AI-generated suggestions before applying them.
+          AI-generated explanations, chat responses, and fix prompts are advisory only and are provided by {AI_PROVIDER_NAME}. AI features are optional, off by default, and generated using redacted snippets of code. AI can make mistakes, hallucinate explanations, or propose non-working or insecure code. AI features never alter your scan score, hide findings, or modify severity levels. Always review and verify AI-generated suggestions before applying them. Chat conversations are not stored by Guardrail and exist only in your browser session.
         </p>
       </section>
 

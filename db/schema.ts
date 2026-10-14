@@ -142,3 +142,14 @@ export const aiExplanationFeedback = pgTable("ai_explanation_feedback", {
     .notNull(),
 });
 
+export const aiChatUsage = pgTable("ai_chat_usage", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  date: date("date").notNull(),
+  chatCount: integer("chat_count").default(0).notNull(),
+  lastRequestAt: timestamp("last_request_at", { withTimezone: true }),
+});
+
+

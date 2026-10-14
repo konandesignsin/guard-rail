@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ScoreRing, getScoreRating } from "@/app/dashboard/score-ring";
 import type { HeatMapFile } from "@/app/dashboard/repo-heat-map";
 import { AiExplanationSection } from "@/app/dashboard/ai-explanation-section";
+import { AiChatPanel } from "@/app/dashboard/ai-chat-panel";
+import { FixPromptGenerator } from "@/app/dashboard/fix-prompt-generator";
 import { AI_PROVIDER_NAME } from "@/lib/legal";
 
 export interface FindingReportItem {
@@ -1167,6 +1169,17 @@ export function SplitReportView({
             )}
           </section>
         </main>
+      )}
+
+      {/* AI Chat Panel */}
+      {scanId && (
+        <AiChatPanel
+          scanId={scanId}
+          findings={findings}
+          isAiGlobalEnabled={isAiGlobalEnabled}
+          initialUserOptIn={userOptIn}
+          providerName={AI_PROVIDER_NAME}
+        />
       )}
     </div>
   );

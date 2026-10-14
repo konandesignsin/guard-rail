@@ -73,8 +73,9 @@ export function SettingsClient({
                 )}
               </div>
               <p className="text-xs text-[var(--muted)] max-w-xl leading-relaxed">
-                When enabled, you can optionally request an AI explanation for specific scan findings.
-                A redacted snippet of approximately 10 lines is sent to {providerName} to generate the explanation.
+                When enabled, you can optionally request AI explanations, use the AI chat assistant, and generate AI fix prompts for scan findings.
+                Redacted snippets of your code are sent to {providerName} to generate responses.
+                Chat conversations are not stored by Guardrail and exist only in your browser session.
                 AI is advisory only: it never alters scan scores or severities.
               </p>
             </div>
