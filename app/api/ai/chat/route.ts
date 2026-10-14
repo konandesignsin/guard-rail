@@ -297,6 +297,48 @@ async function callGeminiChat(
   messages: Array<{ role: string; content: string }>,
   timeoutMs: number
 ): Promise<{ text: string; tokenCount?: number }> {
+  const fallbackModel = process.env.AI_FALLBACK_MODEL;
+  
+  // Try primary model first
+  try {
+    return await callGeminiChatWithModel(apiKey, model, messages, timeoutMs);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    
+    // Check if it's a retryable error (503 or 429)
+    const isRetryable = errorMessage.includes("status 503") || errorMessage.includes("status 429");
+    
+    if (!isRetryable || !fallbackModel) {
+      throw err;
+    }
+    
+    // Log the retry attempt (provider and status only)
+    const statusMatch = errorMessage.match(/status (\d+)/);
+    const status = statusMatch ? statusMatch[1] : "unknown";
+    console.log(`[AI Chat] Retrying with fallback model: provider=gemini status=${status}`);
+    
+    // Wait ~1 second before retry
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Try fallback model
+    try {
+      return await callGeminiChatWithModel(apiKey, fallbackModel, messages, timeoutMs);
+    } catch (fallbackErr) {
+      const fallbackErrorMessage = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      const fallbackStatusMatch = fallbackErrorMessage.match(/status (\d+)/);
+      const fallbackStatus = fallbackStatusMatch ? fallbackStatusMatch[1] : "unknown";
+      console.log(`[AI Chat] Fallback model failed: provider=gemini status=${fallbackStatus}`);
+      throw fallbackErr;
+    }
+  }
+}
+
+async function callGeminiChatWithModel(
+  apiKey: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  timeoutMs: number
+): Promise<{ text: string; tokenCount?: number }> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   // Convert messages to Gemini format

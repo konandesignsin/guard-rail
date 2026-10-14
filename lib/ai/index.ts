@@ -130,8 +130,54 @@ async function fetchWithTimeout(
 
 /**
  * Calls Gemini REST API using plain fetch without heavy SDKs.
+ * Implements retry with fallback model on 503/429 errors.
  */
 async function callGemini(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string
+): Promise<{ text: string; tokenCount?: number }> {
+  const fallbackModel = process.env.AI_FALLBACK_MODEL;
+  
+  // Try primary model first
+  try {
+    return await callGeminiWithModel(apiKey, model, systemPrompt, userPrompt);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    
+    // Check if it's a retryable error (503 or 429)
+    const isRetryable = errorMessage.includes("status 503") || errorMessage.includes("status 429");
+    
+    if (!isRetryable || !fallbackModel) {
+      throw err;
+    }
+    
+    // Log the retry attempt (provider and status only)
+    const statusMatch = errorMessage.match(/status (\d+)/);
+    const status = statusMatch ? statusMatch[1] : "unknown";
+    console.log(`[AI] Retrying with fallback model: provider=gemini status=${status}`);
+    
+    // Wait ~1 second before retry
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Try fallback model
+    try {
+      return await callGeminiWithModel(apiKey, fallbackModel, systemPrompt, userPrompt);
+    } catch (fallbackErr) {
+      const fallbackErrorMessage = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      const fallbackStatusMatch = fallbackErrorMessage.match(/status (\d+)/);
+      const fallbackStatus = fallbackStatusMatch ? fallbackStatusMatch[1] : "unknown";
+      console.log(`[AI] Fallback model failed: provider=gemini status=${fallbackStatus}`);
+      throw fallbackErr;
+    }
+  }
+}
+
+/**
+ * Internal helper to call Gemini with a specific model.
+ */
+async function callGeminiWithModel(
   apiKey: string,
   model: string,
   systemPrompt: string,
