@@ -41,7 +41,7 @@ function to3(x: number, y: number, z = 0): THREE.Vector3 {
 
 function extrudeSvgPath(d: string, depth: number): THREE.ExtrudeGeometry {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}"/></svg>`;
-  const shapes = new SVGLoader().parse(svg).paths.flatMap((p) => p.shapes);
+  const shapes = new SVGLoader().parse(svg).paths.flatMap((p) => p.toShapes());
   const geo = new THREE.ExtrudeGeometry(shapes, {
     depth,
     bevelEnabled: true,

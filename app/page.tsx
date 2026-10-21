@@ -10,26 +10,26 @@ import { SiteFooter } from "@/app/components/site-footer";
 import { getGitHubStarCount } from "@/lib/github";
 
 export const metadata: Metadata = {
-  title: "GuardRail — Mission Control for App Security",
+  title: "GuardRail \u2014 Mission Control for App Security",
   description:
     "Find leaked keys and open database rules before your users do. Autonomous in-memory code radar with instant plain-English remediation.",
   openGraph: {
-    title: "GuardRail — Mission Control for App Security",
+    title: "GuardRail \u2014 Mission Control for App Security",
     description:
       "Find leaked keys and open database rules before your users do. Autonomous in-memory code radar with instant plain-English remediation.",
   },
   twitter: {
-    title: "GuardRail — Mission Control for App Security",
+    title: "GuardRail \u2014 Mission Control for App Security",
     description:
       "Find leaked keys and open database rules before your users do. Autonomous in-memory code radar with instant plain-English remediation.",
   },
 };
 
 // Lazy-load below-the-fold sections
-const MissionSequence = dynamic(
-  () => import("@/app/components/mission-sequence").then((mod) => mod.MissionSequence),
+const BrandShowcase = dynamic(
+  () => import("@/app/components/brand-showcase").then((mod) => mod.BrandShowcase),
   {
-    loading: () => <div className="h-screen w-full bg-[#08090d] animate-pulse" />,
+    loading: () => <div className="h-[700px] w-full bg-[#040508]" />,
   }
 );
 
@@ -76,7 +76,6 @@ const FinalMissionCta = dynamic(
 );
 
 export default function Home() {
-  // Structured SoftwareApplication schema for SEO
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -99,10 +98,8 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Smooth scroll powered by Lenis */}
       <SmoothScroll />
 
-      {/* Navigation */}
       <HeaderNav
         authSlot={
           <Suspense
@@ -116,7 +113,6 @@ export default function Home() {
       />
 
       <main className="relative z-10 flex-1">
-        {/* 1. HERO (100svh): Procedural 3D WebGL planet & asteroids with real HTML copy */}
         <SpaceHero
           authButtons={
             <Suspense
@@ -129,13 +125,11 @@ export default function Home() {
           }
         />
 
-        {/* 2. THE MISSION: Pinned 4-beat sequence (Incoming, Lock-on, Explain, Deflect) */}
-        <MissionSequence />
+        {/* 2. BRAND SHOWCASE: 3D GuardRail logo */}
+        <BrandShowcase />
 
-        {/* 3. LIVE SCANNER STAGE: One large stage replacing 3 cards */}
         <MissionLiveScannerStage />
 
-        {/* 4. TRY IT: In-browser live demo restyled to Mission Control */}
         <section id="demo" className="py-24 bg-[#08090d] border-t border-[#222634]">
           <div className="max-w-6xl mx-auto px-6">
             <header className="max-w-2xl mb-12">
@@ -154,22 +148,17 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 5. TRUST: In-memory guarantee, redactions, MIT open source, and live star count */}
         <Suspense fallback={<TrustSection starCount={null} />}>
           <TrustSectionWithStars />
         </Suspense>
 
-        {/* 6. GITHUB ACTION: YAML snippet + mock PR comment mission report */}
         <ActionSection />
 
-        {/* 7. PRICING & FAQ: Free launch card + accessible accordion */}
         <PricingAndFaqSection />
 
-        {/* 8. FINAL CTA: Soft planet glow and sign-up */}
         <FinalMissionCta />
       </main>
 
-      {/* 9. PREMIUM FOOTER: 4 columns, faint wordmark, legal routes */}
       <SiteFooter />
     </div>
   );
@@ -224,5 +213,3 @@ async function TrustSectionWithStars() {
   const starCount = await getGitHubStarCount();
   return <TrustSection starCount={starCount} />;
 }
-
-
