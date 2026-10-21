@@ -66,7 +66,7 @@ export function HeaderNav({ authSlot }: HeaderNavProps) {
         }`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6">
-          <Logo size="md" showWordmark />
+          <Logo size="md" variant="full" priority />
 
           <nav aria-label="Main" className="flex items-center gap-6">
             <ul className="hidden items-center gap-6 md:flex">

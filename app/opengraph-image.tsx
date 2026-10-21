@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import fs from "fs";
+import path from "path";
 
 export const alt = "guardrail — security spell-checker for AI-built apps";
 export const size = {
@@ -8,6 +10,9 @@ export const size = {
 export const contentType = "image/png";
 
 export default function Image() {
+  const logoData = fs.readFileSync(path.join(process.cwd(), "public", "guardrail-logo-light.png"));
+  const logoBase64 = `data:image/png;base64,${logoData.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -18,43 +23,35 @@ export default function Image() {
           flexDirection: "column",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          backgroundColor: "#090A0F",
+          backgroundColor: "#05060f",
           padding: "80px",
           fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           {/* Logo mark */}
-          <div
-            style={{
-              width: "60px",
-              height: "60px",
-              borderRadius: "14px",
-              backgroundColor: "#161922",
-              border: "1px solid #222634",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-            }}
-          >
-            <span style={{ fontSize: "36px", fontWeight: "600", color: "#EDEDF0", lineHeight: 1 }}>
-              g
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={logoBase64}
+            alt="GuardRail"
+            width={72}
+            height={70}
+            style={{ width: "72px", height: "70px", objectFit: "contain" }}
+          />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: "40px", fontWeight: "700", color: "#EDEDF0", letterSpacing: "-0.02em", lineHeight: 1 }}>
+              GuardRail
             </span>
             <div
               style={{
-                width: "28px",
+                width: "100%",
                 height: "3px",
-                backgroundColor: "#E5484D",
+                backgroundColor: "#e5484d",
                 borderRadius: "2px",
-                marginTop: "4px",
+                marginTop: "6px",
               }}
             />
           </div>
-          <span style={{ fontSize: "36px", fontWeight: "600", color: "#EDEDF0", letterSpacing: "-0.03em" }}>
-            guardrail
-          </span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "900px" }}>

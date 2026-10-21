@@ -58,6 +58,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signUpUrl="/sign-up"
           signInFallbackRedirectUrl="/dashboard"
           signUpFallbackRedirectUrl="/dashboard"
+          appearance={{
+            options: {
+              logoImageUrl: "/guardrail-logo-light.svg",
+              logoPlacement: "inside",
+            },
+            variables: {
+              colorPrimary: "#e5484d",
+              colorBackground: "#090a0f",
+            },
+          }}
         >
           {children}
         </ClerkProvider>

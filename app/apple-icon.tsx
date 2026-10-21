@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import fs from "fs";
+import path from "path";
 
 export const size = {
   width: 180,
@@ -7,6 +9,18 @@ export const size = {
 export const contentType = "image/png";
 
 export default function Icon() {
+  const filePath = path.join(process.cwd(), "public", "apple-touch-icon.png");
+  if (fs.existsSync(filePath)) {
+    const buffer = fs.readFileSync(filePath);
+    return new Response(buffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
+
+  // Fallback if needed
   return new ImageResponse(
     (
       <div
@@ -14,33 +28,12 @@ export default function Icon() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#090A0F",
-          borderRadius: "36px",
+          backgroundColor: "#05060f",
         }}
       >
-        <span
-          style={{
-            fontSize: "108px",
-            fontWeight: "600",
-            color: "#EDEDF0",
-            lineHeight: 1,
-            fontFamily: "system-ui, -apple-system, sans-serif",
-          }}
-        >
-          g
-        </span>
-        <div
-          style={{
-            width: "56px",
-            height: "8px",
-            backgroundColor: "#E5484D",
-            borderRadius: "4px",
-            marginTop: "6px",
-          }}
-        />
+        <span style={{ color: "#fff", fontSize: "40px", fontWeight: "bold" }}>G</span>
       </div>
     ),
     {

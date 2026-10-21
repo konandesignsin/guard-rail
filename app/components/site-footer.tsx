@@ -2,6 +2,7 @@ import Link from "next/link";
 import { OWNER_NAME, CONTACT_EMAIL } from "@/lib/legal";
 import { GITHUB_REPO_URL } from "@/lib/github";
 import { SquiggleUnderline } from "@/app/components/squiggle";
+import { Logo } from "@/app/components/logo";
 
 export function SiteFooter() {
   return (
@@ -24,6 +25,9 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
           {/* Column 1: Product */}
           <div>
+            <div className="mb-4">
+              <Logo size="sm" variant="full" />
+            </div>
             <h4 className="font-mono text-xs font-semibold uppercase text-white tracking-wider mb-4">
               Product
             </h4>

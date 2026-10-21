@@ -88,7 +88,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       >
         {/* Sidebar header */}
         <div className={`flex h-14 items-center border-b border-[var(--border)] ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"}`}>
-          {!sidebarCollapsed && <Logo size="sm" />}
+          {sidebarCollapsed ? (
+            <Logo variant="mark" size="sm" />
+          ) : (
+            <Logo variant="full" size="sm" />
+          )}
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}

@@ -1,4 +1,8 @@
-# Guardrail
+<p align="center">
+  <img src="public/guardrail-logo.svg" alt="GuardRail" width="120" />
+</p>
+
+# GuardRail
 
 Security and quality auditor for AI-built apps (Lovable, Bolt, Cursor) as a GitHub Action and an npm library.
 
