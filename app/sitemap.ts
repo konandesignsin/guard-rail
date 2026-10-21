@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://guardrail.dev";
-  const now = new Date();
+  const now = "2026-10-22T00:00:00.000Z";
 
   return [
     {
