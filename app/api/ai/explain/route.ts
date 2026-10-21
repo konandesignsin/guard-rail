@@ -166,9 +166,14 @@ export async function POST(request: Request) {
     });
 
     if (!aiResult.success || !aiResult.explanation) {
+      const httpStatus = aiResult.providerHttpStatus;
+      const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+      // Log provider name and HTTP status only — never log snippets, prompts, or keys
+      console.error(`[api/ai/explain] Provider failure: provider=${provider} status=${httpStatus ?? "unknown"}`);
+      const statusSuffix = httpStatus ? ` (${httpStatus})` : "";
       return NextResponse.json(
         {
-          error: "Could not generate AI explanation at this time. Showing static guidance instead.",
+          error: `AI service temporarily unavailable${statusSuffix}. Showing static guidance instead.`,
           fallback: true,
         },
         { status: 502 }
@@ -215,7 +220,9 @@ export async function POST(request: Request) {
       cacheKey,
     });
   } catch (err: unknown) {
-    console.error("[api/ai/explain] Error:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const statusMatch = errMsg.match(/status\s+(\d{3})/i);
+    console.error(`[api/ai/explain] Error: status=${statusMatch ? statusMatch[1] : "unknown"}`);
     return NextResponse.json(
       { error: "Internal server error while processing AI explanation." },
       { status: 500 }

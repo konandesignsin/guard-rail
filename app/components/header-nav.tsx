@@ -8,10 +8,10 @@ interface HeaderNavProps {
   authSlot?: React.ReactNode;
 }
 
-const LINKS = [
-  { href: "#try-it", label: "Try it" },
-  { href: "#checks", label: "What we check" },
-  { href: "#before-after", label: "Before / after" },
+const NAV_LINKS = [
+  { href: "#mission", label: "Product" },
+  { href: "#action", label: "GitHub Action" },
+  { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -29,7 +29,7 @@ export function HeaderNav({ authSlot }: HeaderNavProps) {
       if (progressRef.current) {
         progressRef.current.style.transform = `scaleX(${progress})`;
       }
-      setScrolled(window.scrollY > 24);
+      setScrolled(window.scrollY > 20);
     }
 
     function onScroll() {
@@ -49,48 +49,35 @@ export function HeaderNav({ authSlot }: HeaderNavProps) {
 
   return (
     <>
-      {/* Reading progress */}
+      {/* Precision reading progress */}
       <div className="fixed inset-x-0 top-0 z-50 h-[2px] bg-transparent" aria-hidden="true">
         <div
           ref={progressRef}
-          className="h-full origin-left bg-[var(--squiggle-red)]"
+          className="h-full origin-left bg-[#e5484d] transition-transform duration-75"
           style={{ transform: "scaleX(0)" }}
         />
       </div>
 
       <header
-        className={`sticky top-0 z-40 border-b transition-colors ${
+        className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 ${
           scrolled
-            ? "border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur-md"
-            : "border-transparent bg-transparent"
+            ? "border-b border-[#222634]/80 bg-[#08090d]/80 backdrop-blur-md py-3"
+            : "border-b border-transparent bg-transparent py-5"
         }`}
       >
-        <div className="mx-auto flex h-[var(--nav-h)] max-w-6xl items-center justify-between gap-4 px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6">
           <Logo size="md" showWordmark />
 
           <nav aria-label="Main" className="flex items-center gap-6">
             <ul className="hidden items-center gap-6 md:flex">
-              {LINKS.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="nav-link-squiggle relative inline-block py-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--fg)] focus-visible:outline-none"
+                    className="group relative inline-block py-1 text-xs font-medium text-[#8e95a5] transition-colors hover:text-[#ededf0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-sm"
                   >
                     <span>{link.label}</span>
-                    <svg
-                      viewBox="0 0 100 4"
-                      preserveAspectRatio="none"
-                      fill="none"
-                      className="nav-squiggle-svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M 0 2 Q 12.5 0, 25 2 T 50 2 T 75 2 T 100 2"
-                        stroke="var(--squiggle-red)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                    <span className="absolute bottom-0 left-0 h-[1.5px] w-0 bg-[#e5484d] transition-all duration-200 group-hover:w-full" />
                   </a>
                 </li>
               ))}
@@ -100,15 +87,15 @@ export function HeaderNav({ authSlot }: HeaderNavProps) {
               <div className="flex items-center gap-3">
                 <Link
                   href="/sign-in"
-                  className="px-2 py-1 text-xs font-medium text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                  className="px-2 py-1 text-xs font-medium text-[#8e95a5] transition-colors hover:text-[#ededf0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded"
                 >
-                  Sign in
+                  Log in
                 </Link>
                 <Link
                   href="/sign-up"
-                  className="rounded-full bg-[var(--fg)] px-4 py-1.5 text-xs font-medium text-[var(--bg)] shadow-sm transition-colors hover:bg-white"
+                  className="rounded-full bg-[#ededf0] px-4 py-1.5 text-xs font-semibold text-[#08090d] shadow-sm transition-all hover:bg-white hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
-                  Get started
+                  Scan my repo
                 </Link>
               </div>
             )}

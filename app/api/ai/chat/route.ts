@@ -245,9 +245,15 @@ export async function POST(req: NextRequest) {
         tokenCount = result.tokenCount;
       }
     } catch (err) {
-      console.error(`[AI Chat] Provider error: ${err instanceof Error ? err.message : String(err)}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // Extract the upstream HTTP status code from patterns like "Gemini API error 503: ..."
+      const statusMatch = errMsg.match(/API error\s+(\d{3})/i);
+      const providerHttpStatus = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+      // Log provider name and status only — never log user messages, scan content, or keys
+      console.error(`[AI Chat] Provider failure: provider=${provider} status=${providerHttpStatus ?? "unknown"}`);
+      const statusSuffix = providerHttpStatus ? ` (${providerHttpStatus})` : "";
       return NextResponse.json(
-        { error: "AI service temporarily unavailable. Please try again." },
+        { error: `AI service temporarily unavailable${statusSuffix}. Please try again.` },
         { status: 503 }
       );
     }
@@ -283,7 +289,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[AI Chat] Unexpected error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const statusMatch = errMsg.match(/status\s+(\d{3})/i);
+    console.error(`[AI Chat] Unexpected error: status=${statusMatch ? statusMatch[1] : "unknown"}`);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

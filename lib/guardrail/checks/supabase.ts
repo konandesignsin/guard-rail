@@ -17,13 +17,13 @@ export function supabaseCheck(files: FileInput[]): Finding[] {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      const createMatch = line.match(/CREATE\s+TABLE\s+(?:public\.)?(\w+)/i);
+      const createMatch = line.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?(\w+)/i);
       if (createMatch) {
         const tableName = createMatch[1];
         tableRlsStatus.set(tableName, { rlsEnabled: false, policyCount: 0, file: file.path, line: i + 1 });
       }
 
-      const alterMatch = line.match(/ALTER\s+TABLE\s+(?:public\.)?(\w+)\s+.*ENABLE\s+ROW\s+LEVEL\s+SECURITY/i);
+      const alterMatch = line.match(/ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?(\w+)\s+.*ENABLE\s+ROW\s+LEVEL\s+SECURITY/i);
       if (alterMatch) {
         const tableName = alterMatch[1];
         const status = tableRlsStatus.get(tableName);

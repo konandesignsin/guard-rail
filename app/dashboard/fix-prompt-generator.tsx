@@ -52,7 +52,11 @@ export function FixPromptGenerator({
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.limitReached) {
+        if (response.status === 401) {
+          setError("Your session expired. Refresh the page and try again.");
+          setPrompt(staticPrompt);
+          setUsedAI(false);
+        } else if (data.limitReached) {
           setError(data.error);
           setPrompt(staticPrompt);
           setUsedAI(false);

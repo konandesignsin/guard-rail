@@ -326,7 +326,10 @@ export function SplitReportView({
       const data = await res.json();
 
       if (!res.ok) {
-        setAllPromptError(data.error || "Failed to generate prompt");
+        const errorMsg = res.status === 401
+          ? "Your session expired. Refresh the page and try again."
+          : (data.error || "Failed to generate prompt");
+        setAllPromptError(errorMsg);
         const staticFallback = [
           `Review and fix all ${normalizedFindings.length} findings for ${repoName}:`,
           "",

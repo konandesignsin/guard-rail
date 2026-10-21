@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import ReactMarkdown from "react-markdown";
 import type { FindingReportItem } from "@/app/dashboard/split-report-view";
 
 interface ChatMessage {
@@ -136,7 +137,9 @@ export function AiChatPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.limitReached) {
+        if (response.status === 401) {
+          setError("Your session expired. Refresh the page and try again.");
+        } else if (data.limitReached) {
           setLimitReached(true);
           setLimitMessage(data.error);
         } else if (data.requiresOptIn) {
@@ -347,7 +350,45 @@ export function AiChatPanel({
                               : "bg-[var(--surface-subtle)] text-[var(--fg)]"
                           }`}
                         >
-                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                          {msg.role === "assistant" ? (
+                            <div className="prose-chat">
+                              <ReactMarkdown
+                                components={{
+                                  p: ({ children, ...props }) => (
+                                    <p className="mb-2 last:mb-0" {...props}>{children}</p>
+                                  ),
+                                  strong: ({ children, ...props }) => (
+                                    <strong className="font-semibold" {...props}>{children}</strong>
+                                  ),
+                                  code: ({ children, ...props }) => (
+                                    <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-xs" {...props}>{children}</code>
+                                  ),
+                                  ul: ({ children, ...props }) => (
+                                    <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0" {...props}>{children}</ul>
+                                  ),
+                                  ol: ({ children, ...props }) => (
+                                    <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" {...props}>{children}</ol>
+                                  ),
+                                  li: ({ children, ...props }) => (
+                                    <li {...props}>{children}</li>
+                                  ),
+                                  h1: ({ children, ...props }) => (
+                                    <h1 className="mb-2 text-base font-semibold" {...props}>{children}</h1>
+                                  ),
+                                  h2: ({ children, ...props }) => (
+                                    <h2 className="mb-2 text-sm font-semibold" {...props}>{children}</h2>
+                                  ),
+                                  h3: ({ children, ...props }) => (
+                                    <h3 className="mb-1 text-sm font-semibold" {...props}>{children}</h3>
+                                  ),
+                                }}
+                              >
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                          )}
                           {msg.role === "assistant" && (
                             <button
                               type="button"

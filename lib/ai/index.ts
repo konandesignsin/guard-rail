@@ -22,6 +22,8 @@ export interface ExplainFindingResult {
   explanation?: ExplanationOutput;
   fromCache?: boolean;
   error?: "disabled" | "forbidden_file" | "circuit_broken" | "provider_error" | "daily_limit_reached" | "invalid_response";
+  /** HTTP status returned by the upstream AI provider, present only on provider_error. */
+  providerHttpStatus?: number;
 }
 
 // In-memory circuit breaker across transient serverless runtime life:
@@ -351,8 +353,13 @@ export async function explainFinding(
       if (attempt >= maxAttempts) {
         recordAiFailure();
         const latencyMs = Date.now() - startTime;
-        console.error(`[AI] Provider failure: provider=${provider} latencyMs=${latencyMs} error=${err instanceof Error ? err.message : String(err)}`);
-        return { success: false, error: "provider_error" };
+        const errMsg = err instanceof Error ? err.message : String(err);
+        // Extract the upstream HTTP status code from the error message (e.g. "Gemini API error status 503: ...")
+        const statusMatch = errMsg.match(/status\s+(\d{3})/i);
+        const providerHttpStatus = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+        // Log provider name and status only — never log snippets, prompts, keys or response bodies
+        console.error(`[AI] Provider failure: provider=${provider} status=${providerHttpStatus ?? "unknown"} latencyMs=${latencyMs}`);
+        return { success: false, error: "provider_error", providerHttpStatus };
       }
       // Wait 500ms before retry
       await new Promise((resolve) => setTimeout(resolve, 500));

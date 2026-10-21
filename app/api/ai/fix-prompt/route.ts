@@ -274,8 +274,10 @@ Suggested fix: ${targetFindings[0].fix}`;
         }
       }
     } catch (err) {
-      // AI enhancement failed, use the static prompt
-      console.log(`[AI Fix Prompt] Enhancement failed, using static prompt: ${err instanceof Error ? err.message : String(err)}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const statusMatch = errMsg.match(/status\s+(\d{3})/i);
+      const providerStatus = statusMatch ? statusMatch[1] : "unknown";
+      console.error(`[AI Fix Prompt] Enhancement failed: status=${providerStatus}`);
     }
 
     // 11. Update usage tracking
@@ -308,7 +310,9 @@ Suggested fix: ${targetFindings[0].fix}`;
       fallback: !usedAI,
     });
   } catch (error) {
-    console.error("[AI Fix Prompt] Unexpected error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const statusMatch = errMsg.match(/status\s+(\d{3})/i);
+    console.error(`[AI Fix Prompt] Unexpected error: status=${statusMatch ? statusMatch[1] : "unknown"}`);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
