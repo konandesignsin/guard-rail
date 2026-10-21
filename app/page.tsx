@@ -33,8 +33,8 @@ const MissionSequence = dynamic(
   }
 );
 
-const MissionHowItWorks = dynamic(
-  () => import("@/app/components/mission-how-it-works").then((mod) => mod.MissionHowItWorks),
+const MissionLiveScannerStage = dynamic(
+  () => import("@/app/components/mission-live-scanner-stage").then((mod) => mod.MissionLiveScannerStage),
   {
     loading: () => <div className="h-96 w-full bg-[#08090d] animate-pulse" />,
   }
@@ -132,8 +132,8 @@ export default function Home() {
         {/* 2. THE MISSION: Pinned 4-beat sequence (Incoming, Lock-on, Explain, Deflect) */}
         <MissionSequence />
 
-        {/* 3. HOW IT WORKS: Scan, Find, Fix with animated vector glyphs */}
-        <MissionHowItWorks />
+        {/* 3. LIVE SCANNER STAGE: One large stage replacing 3 cards */}
+        <MissionLiveScannerStage />
 
         {/* 4. TRY IT: In-browser live demo restyled to Mission Control */}
         <section id="demo" className="py-24 bg-[#08090d] border-t border-[#222634]">
