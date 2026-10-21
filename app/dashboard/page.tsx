@@ -126,11 +126,15 @@ async function DashboardContent() {
     (account) => account.provider === "github" || account.provider === "oauth_github",
   ) ?? false;
 
+  const isAiEnabled = process.env.AI_ENABLED === "true";
+
   return (
     <WorkspaceClient
       userEmail={user.email}
       scans={serializedScans}
       stats={stats}
+      isAiEnabled={isAiEnabled}
+      userOptIn={user.aiOptIn}
       onboarding={{
         dismissed: user.onboardingDismissed,
         steps: {

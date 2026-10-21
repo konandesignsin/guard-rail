@@ -8,19 +8,26 @@ export interface PlanetInstance {
   dispose: () => void;
   setShieldState: (active: boolean, color?: number) => void;
   setAtmosphereTint: (color: THREE.Color | number) => void;
+  setSunDirection: (dir: THREE.Vector3) => void;
 }
 
-// Global texture cache so textures are loaded only once across instances
 const textureCache = new Map<string, THREE.Texture>();
 const loader = new THREE.TextureLoader();
 
-function loadTexture(url: string): THREE.Texture {
-  if (textureCache.has(url)) {
-    return textureCache.get(url)!;
+function loadTexture(url: string, colorSpace: string): THREE.Texture {
+  const cacheKey = `${url}:${colorSpace}`;
+  if (textureCache.has(cacheKey)) {
+    return textureCache.get(cacheKey)!;
   }
   const tex = loader.load(url);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  textureCache.set(url, tex);
+  tex.colorSpace = colorSpace;
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = 16;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  textureCache.set(cacheKey, tex);
   return tex;
 }
 
@@ -29,32 +36,27 @@ export interface PlanetOptions {
   cloudsRotationMultiplier?: number;
   showClouds?: boolean;
   showNightLights?: boolean;
+  showAtmosphere?: boolean;
 }
 
-/**
- * Creates a shared realistic 3D Planet instance
- * - Day map, night city lights, clouds layer rotating faster, normal/bump map, specular map
- * - True day/night directional sun terminator
- * - Fresnel atmosphere rim glow
- * - Energy shield mesh
- */
 export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance {
   const radius = options.radius ?? 2.2;
   const cloudsRotationMultiplier = options.cloudsRotationMultiplier ?? 1.35;
   const showClouds = options.showClouds ?? true;
   const showNightLights = options.showNightLights ?? true;
+  const showAtmosphere = options.showAtmosphere ?? true;
 
   const group = new THREE.Group();
 
-  // Load textures
-  const dayTex = loadTexture("/textures/earth-day.png");
-  const nightTex = loadTexture("/textures/earth-night.png");
-  const cloudsTex = loadTexture("/textures/earth-clouds.png");
-  const bumpTex = loadTexture("/textures/earth-bump.png");
-  const specTex = loadTexture("/textures/earth-specular.png");
+  const dayTex = loadTexture("/textures/earth-day.png", THREE.SRGBColorSpace);
+  const nightTex = loadTexture("/textures/earth-night.png", THREE.SRGBColorSpace);
+  const cloudsTex = loadTexture("/textures/earth-clouds.png", THREE.SRGBColorSpace);
+  const bumpTex = loadTexture("/textures/earth-bump.png", THREE.LinearSRGBColorSpace);
+  const specTex = loadTexture("/textures/earth-specular.png", THREE.LinearSRGBColorSpace);
 
-  // Custom Shader Material for Day/Night blending with specular and bump
-  const planetGeo = new THREE.SphereGeometry(radius, 64, 64);
+  const sunDir = new THREE.Vector3(1, 0.4, 0.8).normalize();
+
+  const planetGeo = new THREE.SphereGeometry(radius, 96, 96);
 
   const planetShaderMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -62,8 +64,7 @@ export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance 
       nightTexture: { value: nightTex },
       bumpTexture: { value: bumpTex },
       specularTexture: { value: specTex },
-      sunDirection: { value: new THREE.Vector3(5, 3, 5).normalize() },
-      atmosphereTint: { value: new THREE.Color(0x38bdf8) },
+      sunDirection: { value: sunDir },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -83,38 +84,32 @@ export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance 
       uniform sampler2D bumpTexture;
       uniform sampler2D specularTexture;
       uniform vec3 sunDirection;
-      uniform vec3 atmosphereTint;
 
       varying vec2 vUv;
       varying vec3 vNormal;
       varying vec3 vPosition;
 
       void main() {
-        // Sun alignment in world space
         vec3 normal = normalize(vNormal);
         vec3 viewDir = normalize(-vPosition);
-        
-        // Dot product with sun
+
         float nDotL = dot(normal, normalize(sunDirection));
-        
-        // Smooth transition at day/night terminator
-        float dayFactor = smoothstep(-0.15, 0.25, nDotL);
-        
+        float dayFactor = smoothstep(-0.18, 0.28, nDotL);
+
         vec4 dayColor = texture2D(dayTexture, vUv);
         vec4 nightColor = texture2D(nightTexture, vUv);
         vec4 specColor = texture2D(specularTexture, vUv);
-        
-        // Specular highlight on oceans during daytime
-        vec3 halfVector = normalize(sunDirection + viewDir);
-        float specStrength = pow(max(dot(normal, halfVector), 0.0), 32.0) * specColor.r * 0.8;
-        vec3 specular = vec3(1.0, 0.95, 0.85) * specStrength * dayFactor;
-        
-        // Blend day and night
-        vec3 baseColor = mix(nightColor.rgb * 1.6, dayColor.rgb, dayFactor) + specular;
-        
-        // Fresnel limb glow
-        float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
-        baseColor += atmosphereTint * fresnel * 0.45 * max(dayFactor, 0.2);
+
+        vec3 halfVector = normalize(normalize(sunDirection) + viewDir);
+        float spec = pow(max(dot(normal, halfVector), 0.0), 48.0) * specColor.r * dayFactor;
+        vec3 specular = vec3(1.0, 0.97, 0.92) * spec * 0.6;
+
+        float nightIntensity = (1.0 - dayFactor) * 2.2;
+        vec3 baseColor = mix(nightColor.rgb * nightIntensity, dayColor.rgb * 1.05, dayFactor);
+        baseColor += specular;
+
+        float diffuseWrap = max(nDotL, 0.0);
+        baseColor *= 0.35 + diffuseWrap * 0.65;
 
         gl_FragColor = vec4(baseColor, 1.0);
       }
@@ -124,22 +119,122 @@ export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance 
   const planetMesh = new THREE.Mesh(planetGeo, planetShaderMat);
   group.add(planetMesh);
 
-  // Clouds layer
   let cloudsMesh: THREE.Mesh | null = null;
   if (showClouds) {
-    const cloudsGeo = new THREE.SphereGeometry(radius + 0.035, 48, 48);
+    const cloudsGeo = new THREE.SphereGeometry(radius + 0.03, 48, 48);
     const cloudsMat = new THREE.MeshStandardMaterial({
       map: cloudsTex,
       transparent: true,
-      opacity: 0.65,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.55,
       depthWrite: false,
     });
     cloudsMesh = new THREE.Mesh(cloudsGeo, cloudsMat);
     group.add(cloudsMesh);
   }
 
-  // Energy shield (fresnel sphere for Deflect phase)
+  // Inner atmosphere shell — fresnel rim glow
+  let atmosphereMesh: THREE.Mesh | null = null;
+  let outerHaloMesh: THREE.Mesh | null = null;
+
+  if (showAtmosphere) {
+    const atmoGeo = new THREE.SphereGeometry(radius * 1.025, 64, 64);
+    const atmoMat = new THREE.ShaderMaterial({
+      uniforms: {
+        sunDirection: { value: sunDir.clone() },
+        rimColor: { value: new THREE.Color(0xff8a5c) },
+        dayColor: { value: new THREE.Color(0x6eaaff) },
+        nightColor: { value: new THREE.Color(0x1a1040) },
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 sunDirection;
+        uniform vec3 rimColor;
+        uniform vec3 dayColor;
+        uniform vec3 nightColor;
+
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+
+        void main() {
+          vec3 normal = normalize(vNormal);
+          vec3 viewDir = normalize(-vPosition);
+
+          float fresnel = pow(1.0 - abs(dot(viewDir, normal)), 3.5);
+          float sunDot = dot(normal, normalize(sunDirection));
+          float sunFactor = smoothstep(-0.25, 0.6, sunDot);
+
+          vec3 baseAtmo = mix(nightColor, dayColor, sunFactor);
+
+          float rimStrength = smoothstep(-0.1, 0.9, sunFactor) * sunFactor;
+          vec3 finalColor = mix(baseAtmo, rimColor, rimStrength * 0.75);
+
+          float alpha = fresnel * (0.35 + sunFactor * 0.65);
+          alpha *= 1.4;
+
+          gl_FragColor = vec4(finalColor, clamp(alpha, 0.0, 1.0));
+        }
+      `,
+      transparent: true,
+      side: THREE.BackSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    atmosphereMesh = new THREE.Mesh(atmoGeo, atmoMat);
+    group.add(atmosphereMesh);
+
+    // Outer halo — softer, larger glow
+    const haloGeo = new THREE.SphereGeometry(radius * 1.12, 48, 48);
+    const haloMat = new THREE.ShaderMaterial({
+      uniforms: {
+        sunDirection: { value: sunDir.clone() },
+        haloColor: { value: new THREE.Color(0xff8a5c) },
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 sunDirection;
+        uniform vec3 haloColor;
+
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+
+        void main() {
+          vec3 normal = normalize(vNormal);
+          vec3 viewDir = normalize(-vPosition);
+
+          float fresnel = pow(1.0 - abs(dot(viewDir, normal)), 5.0);
+          float sunFactor = smoothstep(-0.3, 0.5, dot(normal, normalize(sunDirection)));
+
+          float alpha = fresnel * sunFactor * 0.35;
+
+          gl_FragColor = vec4(haloColor, clamp(alpha, 0.0, 1.0));
+        }
+      `,
+      transparent: true,
+      side: THREE.BackSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    outerHaloMesh = new THREE.Mesh(haloGeo, haloMat);
+    group.add(outerHaloMesh);
+  }
+
+  // Energy shield (for Deflect phase in mission sequence)
   const shieldGeo = new THREE.SphereGeometry(radius + 0.22, 48, 48);
   const shieldMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -186,10 +281,24 @@ export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance 
       shieldMat.uniforms.opacity.value = active ? 0.85 : 0.0;
     },
     setAtmosphereTint: (color) => {
-      if (typeof color === "number") {
-        planetShaderMat.uniforms.atmosphereTint.value.setHex(color);
-      } else {
-        planetShaderMat.uniforms.atmosphereTint.value.copy(color);
+      const c = typeof color === "number" ? new THREE.Color(color) : color;
+      if (atmosphereMesh) {
+        const mat = atmosphereMesh.material as THREE.ShaderMaterial;
+        mat.uniforms.rimColor.value.copy(c);
+      }
+      if (outerHaloMesh) {
+        const mat = outerHaloMesh.material as THREE.ShaderMaterial;
+        mat.uniforms.haloColor.value.copy(c);
+      }
+    },
+    setSunDirection: (dir) => {
+      const d = dir.clone().normalize();
+      planetShaderMat.uniforms.sunDirection.value.copy(d);
+      if (atmosphereMesh) {
+        (atmosphereMesh.material as THREE.ShaderMaterial).uniforms.sunDirection.value.copy(d);
+      }
+      if (outerHaloMesh) {
+        (outerHaloMesh.material as THREE.ShaderMaterial).uniforms.sunDirection.value.copy(d);
       }
     },
     dispose: () => {
@@ -198,6 +307,14 @@ export function createSharedPlanet(options: PlanetOptions = {}): PlanetInstance 
       if (cloudsMesh) {
         cloudsMesh.geometry.dispose();
         (cloudsMesh.material as THREE.Material).dispose();
+      }
+      if (atmosphereMesh) {
+        atmosphereMesh.geometry.dispose();
+        (atmosphereMesh.material as THREE.Material).dispose();
+      }
+      if (outerHaloMesh) {
+        outerHaloMesh.geometry.dispose();
+        (outerHaloMesh.material as THREE.Material).dispose();
       }
       shieldGeo.dispose();
       shieldMat.dispose();

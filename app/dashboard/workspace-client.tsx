@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { ScanBox } from "@/app/dashboard/scan-box";
 import { ScoreRing } from "@/app/dashboard/score-ring";
 import { CommandPalette, type CommandItem } from "@/app/dashboard/command-palette";
+import { HeroChat } from "@/app/dashboard/hero-chat";
 
 export interface ScanItem {
   id: string;
@@ -43,10 +43,12 @@ interface WorkspaceLayoutProps {
   userEmail?: string;
   scans: ScanItem[];
   stats?: DashboardStats;
+  isAiEnabled?: boolean;
+  userOptIn?: boolean;
   onboarding: OnboardingState;
 }
 
-export function WorkspaceClient({ userEmail, scans, stats, onboarding }: WorkspaceLayoutProps) {
+export function WorkspaceClient({ userEmail, scans, stats, isAiEnabled, userOptIn, onboarding }: WorkspaceLayoutProps) {
   const router = useRouter();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isStartingExample, setIsStartingExample] = useState(false);
@@ -54,7 +56,7 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
   const [showOnboarding, setShowOnboarding] = useState(!onboarding.dismissed);
   const [isDismissingOnboarding, setIsDismissingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [scanError, setScanError] = useState("");
 
   const showPreviewRoutes = process.env.NEXT_PUBLIC_SHOW_PREVIEW_ROUTES === "true";
 
@@ -72,7 +74,7 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
         document.activeElement?.tagName !== "TEXTAREA"
       ) {
         e.preventDefault();
-        inputRef.current?.focus();
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -114,6 +116,25 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     }
   }
 
+  async function handleRepoScan(repoUrl: string) {
+    setScanError("");
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoUrl: repoUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScanError(data.error ?? "Could not scan repository. Please verify the URL is public.");
+        return;
+      }
+      router.push(`/dashboard/scans/${data.scanId}`);
+    } catch {
+      setScanError("Could not reach the scan service. Please check your connection.");
+    }
+  }
+
   function formatTimeAgo(isoString: string) {
     const date = new Date(isoString);
     const now = new Date();
@@ -132,10 +153,10 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
     {
       id: "cmd-new-scan",
       title: "New scan",
-      subtitle: "Focus repository scanner input",
+      subtitle: "Scroll to scanner",
       category: "Actions",
       shortcut: "/",
-      onSelect: () => inputRef.current?.focus(),
+      onSelect: () => window.scrollTo({ top: 0, behavior: "smooth" }),
     },
     {
       id: "cmd-try-example",
@@ -197,19 +218,31 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
   return (
     <>
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10 space-y-8">
-        {/* Header */}
+        {/* Hero: 3D space scene + glassmorphism chat */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5 }}
         >
-          <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight text-[var(--fg)]">
-            What do you want to check?
-          </h1>
-          <p className="mt-2 text-sm md:text-base text-[var(--muted)]">
-            Paste a repository URL or select an existing project. We check your files in memory and never store your code. Optional AI explanations send a redacted snippet to the provider.
-          </p>
+          <HeroChat
+            isAiEnabled={isAiEnabled ?? false}
+            userOptIn={userOptIn ?? false}
+            onRepoScan={handleRepoScan}
+          />
         </motion.div>
+
+        {scanError && (
+          <div className="rounded-lg border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] p-4 text-sm text-[var(--squiggle-red)]">
+            {scanError}
+            <button
+              type="button"
+              onClick={() => setScanError("")}
+              className="ml-2 underline hover:text-[var(--squiggle-red)]/80"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Onboarding card */}
         {showOnboarding && (
@@ -278,14 +311,7 @@ export function WorkspaceClient({ userEmail, scans, stats, onboarding }: Workspa
           </motion.section>
         )}
 
-        {/* Scan input */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <ScanBox inputRef={inputRef} />
-        </motion.div>
+        {/* Onboarding card */}
 
         {exampleError && (
           <div className="rounded-lg border border-[var(--squiggle-red)]/30 bg-[var(--squiggle-red-subtle)] p-4 text-sm text-[var(--squiggle-red)]">
