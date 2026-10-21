@@ -1,17 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
-
-const SpaceScene = dynamic(() => import("@/app/dashboard/space-scene"), {
-  ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a1a] via-[#1a1a3a] to-[#0a0a1a]" />
-  ),
-});
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -27,30 +18,105 @@ interface HeroChatProps {
 const GITHUB_REPO_REGEX = /^https?:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/;
 
 const SUGGESTIONS = [
-  { text: "Scan my GitHub repo", primary: true },
-  { text: "What security issues should I check first?", primary: true },
-  { text: "Explain exposed API keys", primary: false },
-  { text: "How does scoring work?", primary: false },
+  { text: "Paste a public GitHub URL", action: "prefill-repo" as const, primary: true },
+  { text: "Select one of your repos", action: "open-picker" as const, primary: true },
+  { text: "Is my Supabase database open?", action: "ask" as const, primary: false },
+  { text: "What do you scan for?", action: "ask" as const, primary: false },
 ];
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY = 6;
+const MAX_RETRIES = 2;
+const RETRY_DELAYS = [1000, 2000];
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
+function useIsDataSaver() {
+  const [saver, setSaver] = useState(false);
+  useEffect(() => {
+    const nav = navigator as any;
+    if (nav?.connection?.saveData) setSaver(true);
+  }, []);
+  return saver;
+}
 
 export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) {
-  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showOptIn, setShowOptIn] = useState(!userOptIn && isAiEnabled);
   const [showRepoPicker, setShowRepoPicker] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  const reducedMotion = usePrefersReducedMotion();
+  const dataSaver = useIsDataSaver();
+  const showPosterOnly = reducedMotion || dataSaver || videoFailed;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // IntersectionObserver: pause video when hero is off-screen
+  useEffect(() => {
+    if (showPosterOnly) return;
+    const el = heroRef.current;
+    const vid = videoRef.current;
+    if (!el || !vid) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showPosterOnly]);
+
+  // Visibility change: pause when tab hidden
+  useEffect(() => {
+    if (showPosterOnly) return;
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        vid.pause();
+      } else {
+        // Only resume if hero is also in viewport
+        const el = heroRef.current;
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+          if (inView) vid.play().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [showPosterOnly]);
 
   const handleOptIn = async () => {
     try {
@@ -63,64 +129,97 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
     }
   };
 
-  const handleSubmit = useCallback(async (e?: FormEvent) => {
-    e?.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
+  const callAi = useCallback(
+    async (trimmed: string, history: ChatMessage[], attempt: number): Promise<{ response: string } | { error: string; status?: number; requiresOptIn?: boolean }> => {
+      try {
+        const res = await fetch("/api/ai/dashboard-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            history: history.slice(-MAX_HISTORY - 1, -1).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
 
-    if (GITHUB_REPO_REGEX.test(trimmed)) {
-      onRepoScan(trimmed);
-      setInput("");
-      return;
-    }
+        const data = await res.json();
 
-    setInput("");
-    setError(null);
-    setIsLoading(true);
-
-    const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(newMessages);
-
-    if (showOptIn || !isAiEnabled) {
-      setIsLoading(false);
-      setError("AI assistant requires opt-in. Click 'Enable AI' below to continue.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/ai/dashboard-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: trimmed,
-          history: newMessages.slice(-MAX_HISTORY - 1, -1).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          setError("Your session expired. Refresh the page and try again.");
-        } else if (data.requiresOptIn) {
-          setShowOptIn(true);
-        } else {
-          setError(data.error || "Failed to get response.");
+        if (!res.ok) {
+          if (res.status === 401) {
+            return { error: "Your session expired. Refresh the page and try again.", status: 401 };
+          }
+          if (data.requiresOptIn) {
+            return { error: "", requiresOptIn: true };
+          }
+          // Retry on 503/429
+          if ((res.status === 503 || res.status === 429) && attempt < MAX_RETRIES) {
+            const delay = RETRY_DELAYS[attempt] || 2000;
+            await new Promise((r) => setTimeout(r, delay));
+            return callAi(trimmed, history, attempt + 1);
+          }
+          if (res.status === 503 || res.status === 429) {
+            return { error: "The AI is busy right now. Try again in a moment." };
+          }
+          return { error: data.error || "Failed to get response.", status: res.status };
         }
-        setIsLoading(false);
+
+        return { response: data.response || "" };
+      } catch {
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[attempt] || 2000;
+          await new Promise((r) => setTimeout(r, delay));
+          return callAi(trimmed, history, attempt + 1);
+        }
+        return { error: "Network error. Please try again." };
+      }
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (e?: FormEvent, overrideText?: string) => {
+      e?.preventDefault();
+      const rawText = overrideText ?? input;
+      const trimmed = rawText.trim();
+      if (!trimmed || isLoading) return;
+
+      if (GITHUB_REPO_REGEX.test(trimmed)) {
+        onRepoScan(trimmed);
+        setInput("");
         return;
       }
 
-      setMessages([...newMessages, { role: "assistant", content: data.response || "" }]);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
+      setInput("");
+      setError(null);
+      setIsLoading(true);
+
+      const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
+      setMessages(newMessages);
+
+      if (showOptIn || !isAiEnabled) {
+        setIsLoading(false);
+        setError("AI assistant requires opt-in. Click 'Enable AI' below to continue.");
+        return;
+      }
+
+      const result = await callAi(trimmed, newMessages, 0);
+
+      if ("response" in result) {
+        setMessages([...newMessages, { role: "assistant", content: result.response }]);
+      } else {
+        if (result.requiresOptIn) {
+          setShowOptIn(true);
+        } else {
+          setError(result.error);
+        }
+      }
+
       setIsLoading(false);
-    }
-  }, [input, isLoading, messages, showOptIn, isAiEnabled, onRepoScan]);
+    },
+    [input, isLoading, messages, showOptIn, isAiEnabled, onRepoScan, callAi]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -129,30 +228,85 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
     }
   };
 
-  const handleSuggestion = (text: string) => {
-    if (text === "Scan my GitHub repo") {
+  const handleSuggestion = (suggestion: (typeof SUGGESTIONS)[number]) => {
+    if (suggestion.action === "open-picker") {
       setShowRepoPicker(true);
       return;
     }
-    setInput(text);
-    inputRef.current?.focus();
+    if (suggestion.action === "prefill-repo") {
+      setInput("https://github.com/");
+      inputRef.current?.focus();
+      return;
+    }
+    // "ask" - auto-submit with the suggestion text
+    handleSubmit(undefined, suggestion.text);
   };
 
+  const hasMessages = messages.length > 0;
+
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ minHeight: "520px" }}>
-      {/* 3D Background */}
-      <div className="absolute inset-0">
-        <SpaceScene />
+    <div ref={heroRef} className="relative w-full" style={{ minHeight: "520px" }}>
+      {/* Video background */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Poster image - shows instantly */}
+        <img
+          src="/videos/earth-poster.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-[50%_65%]"
+          aria-hidden="true"
+        />
+
+        {/* Video - fades in over poster */}
+        {!showPosterOnly && (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster="/videos/earth-poster.jpg"
+            onLoadedData={() => setVideoLoaded(true)}
+            onError={() => setVideoFailed(true)}
+            className="absolute inset-0 h-full w-full object-cover object-[50%_65%] transition-opacity duration-[400ms]"
+            style={{ opacity: videoLoaded ? 1 : 0 }}
+          >
+            <source src="/videos/earth.webm" type="video/webm" />
+            <source src="/videos/earth.mp4" type="video/mp4" />
+          </video>
+        )}
+
+        {/* Top gradient mask - blends into dark sky */}
+        <div
+          className="absolute inset-x-0 top-0 h-40 pointer-events-none"
+          style={{
+            background: "linear-gradient(to bottom, rgba(4,5,8,0.85) 0%, rgba(4,5,8,0.4) 50%, transparent 100%)",
+          }}
+        />
+
+        {/* Bottom gradient mask - fades into page background */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-48 pointer-events-none"
+          style={{
+            background: "linear-gradient(to top, #08090d 0%, rgba(8,9,13,0.8) 40%, transparent 100%)",
+          }}
+        />
+
+        {/* Subtle dark overlay for text readability */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "rgba(4,5,8,0.2)" }}
+        />
       </div>
 
       {/* Content overlay */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-4 py-10 md:py-14" style={{ minHeight: "520px" }}>
+      <div className="relative z-10 flex flex-col items-center justify-end px-4 pb-10 pt-28 md:pb-14 md:pt-36" style={{ minHeight: "520px" }}>
         {/* Headline */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
           <h1 className="font-display text-3xl md:text-5xl font-medium tracking-tight text-white drop-shadow-lg">
             Ask GuardRail before you ship.
@@ -162,46 +316,27 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           </p>
         </motion.div>
 
-        {/* Glassmorphism chat box */}
+        {/* Chat area - floating glass bar */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="w-full max-w-2xl"
-          style={{
-            animation: "heroFloat 6s ease-in-out infinite",
-          }}
+          className="w-full max-w-[760px]"
         >
-          <div
-            className="overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)",
-              backdropFilter: "blur(24px) saturate(160%)",
-              WebkitBackdropFilter: "blur(24px) saturate(160%)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              borderTopColor: "rgba(255,255,255,0.28)",
-              borderRadius: "28px",
-              boxShadow: "0 20px 80px rgba(109,74,255,0.35), inset 0 1px 0 rgba(255,255,255,0.25)",
-            }}
-          >
-            {/* Messages area */}
-            <div
-              ref={messagesContainerRef}
-              className="px-5 pt-5 overflow-y-auto"
-              style={{
-                maxHeight: "300px",
-                maskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 100%)",
-                WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 100%)",
-              }}
-            >
-              {showOptIn ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="mb-3 rounded-full bg-white/10 p-3">
-                    <svg className="h-6 w-6 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-white/80 mb-3 max-w-xs">
+          {/* Messages / Suggestions */}
+          <div className="mb-3">
+            {showOptIn ? (
+              <div className="flex justify-center">
+                <div
+                  className="rounded-2xl px-5 py-4 text-center"
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    backdropFilter: "blur(18px) saturate(170%)",
+                    WebkitBackdropFilter: "blur(18px) saturate(170%)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                  }}
+                >
+                  <p className="text-sm text-white/80 mb-3 max-w-xs mx-auto">
                     Enable AI assistant to ask security questions. Messages are sent to the configured AI provider.
                   </p>
                   <button
@@ -213,114 +348,137 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
                     Enable AI Assistant
                   </button>
                 </div>
-              ) : messages.length === 0 ? (
-                <div className="py-6">
-                  <p className="text-xs text-white/50 mb-3 font-mono uppercase tracking-wider">Try asking</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SUGGESTIONS.map((s) => (
-                      <button
-                        key={s.text}
-                        type="button"
-                        onClick={() => handleSuggestion(s.text)}
-                        className={`rounded-full px-4 py-2 text-xs font-medium transition-all ${
-                          s.primary
-                            ? "border border-[#ff8a5c]/60 text-[#ff8a5c] hover:bg-[#ff8a5c]/10"
-                            : "border border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
+              </div>
+            ) : !hasMessages ? (
+              <AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex flex-wrap justify-center gap-2"
+                >
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s.text}
+                      type="button"
+                      onClick={() => handleSuggestion(s)}
+                      className={`rounded-full px-4 py-2 text-xs font-medium transition-all ${
+                        s.primary
+                          ? "border border-[#ff8a5c]/60 text-[#ff8a5c] hover:bg-[#ff8a5c]/10"
+                          : "border border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {s.text}
+                    </button>
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            ) : (
+              <div
+                ref={messagesContainerRef}
+                className="overflow-y-auto space-y-3 px-1"
+                style={{ maxHeight: "280px" }}
+              >
+                <AnimatePresence initial={false}>
+                  {messages.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                          msg.role === "user"
+                            ? "bg-white/20 text-white"
+                            : "bg-white/10 text-white/90"
                         }`}
+                        style={{
+                          backdropFilter: "blur(12px)",
+                          WebkitBackdropFilter: "blur(12px)",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                        }}
                       >
-                        {s.text}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 pb-2">
-                  <AnimatePresence initial={false}>
-                    {messages.map((msg, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                            msg.role === "user"
-                              ? "bg-white/20 text-white"
-                              : "bg-white/10 text-white/90"
-                          }`}
-                          style={{
-                            backdropFilter: "blur(12px)",
-                            border: "1px solid rgba(255,255,255,0.15)",
-                          }}
-                        >
-                          {msg.role === "assistant" ? (
-                            <div className="prose-chat">
-                              <ReactMarkdown
-                                components={{
-                                  p: ({ children, ...props }) => (
-                                    <p className="mb-2 last:mb-0" {...props}>{children}</p>
-                                  ),
-                                  strong: ({ children, ...props }) => (
-                                    <strong className="font-semibold" {...props}>{children}</strong>
-                                  ),
-                                  code: ({ children, ...props }) => (
-                                    <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs" {...props}>{children}</code>
-                                  ),
-                                  ul: ({ children, ...props }) => (
-                                    <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0" {...props}>{children}</ul>
-                                  ),
-                                  ol: ({ children, ...props }) => (
-                                    <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" {...props}>{children}</ol>
-                                  ),
-                                }}
-                              >
-                                {msg.content}
-                              </ReactMarkdown>
-                            </div>
-                          ) : (
-                            <div className="whitespace-pre-wrap">{msg.content}</div>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                        {msg.role === "assistant" ? (
+                          <div className="prose-chat">
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children, ...props }) => (
+                                  <p className="mb-2 last:mb-0" {...props}>{children}</p>
+                                ),
+                                strong: ({ children, ...props }) => (
+                                  <strong className="font-semibold" {...props}>{children}</strong>
+                                ),
+                                code: ({ children, ...props }) => (
+                                  <code className="rounded bg-black/20 px-1 py-0.5 font-mono text-xs" {...props}>{children}</code>
+                                ),
+                                ul: ({ children, ...props }) => (
+                                  <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0" {...props}>{children}</ul>
+                                ),
+                                ol: ({ children, ...props }) => (
+                                  <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" {...props}>{children}</ol>
+                                ),
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="rounded-2xl bg-white/10 px-4 py-3" style={{ backdropFilter: "blur(12px)" }}>
-                        <div className="flex gap-1.5">
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "0ms" }} />
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "150ms" }} />
-                          <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "300ms" }} />
-                        </div>
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl bg-white/10 px-4 py-3" style={{ backdropFilter: "blur(12px)" }}>
+                      <div className="flex gap-1.5">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "0ms" }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "150ms" }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-white/60" style={{ animationDelay: "300ms" }} />
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {error && (
-                    <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-300">
-                      {error}
-                      <button
-                        type="button"
-                        onClick={() => setError(null)}
-                        className="ml-2 underline hover:text-red-200"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
+                {error && (
+                  <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-300">
+                    {error}
+                    <button
+                      type="button"
+                      onClick={() => setError(null)}
+                      className="ml-2 underline hover:text-red-200"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
 
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
 
-            {/* Input area */}
-            {!showOptIn && (
-              <form onSubmit={handleSubmit} className="px-4 pb-4 pt-2">
-                <div className="flex items-end gap-2">
+          {/* Glass chat bar */}
+          {!showOptIn && (
+            <form onSubmit={handleSubmit}>
+              <div
+                className="overflow-hidden"
+                style={{
+                  background: "rgba(255,255,255,0.07)",
+                  backdropFilter: "blur(18px) saturate(170%)",
+                  WebkitBackdropFilter: "blur(18px) saturate(170%)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderTopColor: "rgba(255,255,255,0.28)",
+                  borderRadius: "32px",
+                  boxShadow: "0 8px 40px rgba(109,74,255,0.2), inset 0 1px 0 rgba(255,255,255,0.2)",
+                  padding: "20px 24px",
+                }}
+              >
+                <div className="flex items-end gap-3">
                   <div className="flex-1 relative">
                     <textarea
                       ref={inputRef}
@@ -329,17 +487,19 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
                       onKeyDown={handleKeyDown}
                       placeholder="Paste a GitHub URL or ask a security question..."
                       disabled={isLoading}
-                      rows={1}
-                      className="w-full resize-none rounded-2xl bg-white/10 px-4 py-3 pr-14 text-sm text-white placeholder:text-white/40 outline-none border border-white/15 focus:border-white/30 transition-colors disabled:opacity-50"
+                      rows={2}
+                      className="w-full resize-none rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none border border-white/15 focus:border-white/30 transition-colors disabled:opacity-50"
                       style={{
                         backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        maxHeight: "120px",
                       }}
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105"
                     style={{ background: "#ff8a5c" }}
                     aria-label="Send message"
                   >
@@ -356,10 +516,15 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
                     AI can make mistakes. Verify before applying.
                   </span>
                 </div>
-              </form>
-            )}
-          </div>
+              </div>
+            </form>
+          )}
         </motion.div>
+
+        {/* Credits */}
+        <p className="mt-4 text-[10px] text-white/25 text-center">
+          Earth imagery: NASA&apos;s Scientific Visualization Studio. Data courtesy of Reto Stockli (NASA/GSFC). Public domain.
+        </p>
       </div>
 
       {/* Repo picker modal */}
@@ -401,13 +566,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style jsx global>{`
-        @keyframes heroFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
-        }
-      `}</style>
     </div>
   );
 }
