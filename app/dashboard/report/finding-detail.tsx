@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { AiExplanationSection } from "@/app/dashboard/ai-explanation-section";
 import { AI_PROVIDER_NAME } from "@/lib/legal";
 import { describeRule, SEVERITY_LABEL, staticFixPrompt } from "@/lib/report/rules";
@@ -171,7 +172,7 @@ export function FindingDetail({
           <button
             type="button"
             onClick={() => copy(`${finding.file}:${finding.line}`, "path")}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--fg)]"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--fg)]"
           >
             {copied === "path" ? "Copied" : "Copy path"}
           </button>
@@ -189,7 +190,7 @@ export function FindingDetail({
             type="button"
             onClick={() => onDevModeChange(false)}
             aria-pressed={!devMode}
-            className={`inline-flex min-h-9 items-center rounded-md px-3 text-[13px] transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-md px-3 text-[13px] transition-colors ${
               !devMode
                 ? "bg-[var(--surface)] font-semibold text-[var(--fg)]"
                 : "text-[var(--muted)] hover:text-[var(--fg)]"
@@ -201,7 +202,7 @@ export function FindingDetail({
             type="button"
             onClick={() => onDevModeChange(true)}
             aria-pressed={devMode}
-            className={`inline-flex min-h-9 items-center rounded-md px-3 text-[13px] transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-md px-3 text-[13px] transition-colors ${
               devMode
                 ? "bg-[var(--surface)] font-semibold text-[var(--fg)]"
                 : "text-[var(--muted)] hover:text-[var(--fg)]"
@@ -216,7 +217,7 @@ export function FindingDetail({
             type="button"
             onClick={() => setShowModeTip((open) => !open)}
             onBlur={() => setShowModeTip(false)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
             aria-label="What is the difference between the two detail levels?"
             aria-expanded={showModeTip}
             aria-describedby={tooltipId}
@@ -365,12 +366,12 @@ export function FindingDetail({
         {aiEnabled && !userOptIn && !isFixed && (
           <p className="w-full text-[13px] leading-6 text-[var(--muted)]">
             AI help is off for your account. Enable it in{" "}
-            <a
+            <Link
               href="/dashboard/settings"
               className="underline decoration-[var(--muted-subtle)] underline-offset-2 hover:text-[var(--fg)]"
             >
               Settings
-            </a>{" "}
+            </Link>{" "}
             to generate AI fix prompts or ask questions about this finding.
           </p>
         )}

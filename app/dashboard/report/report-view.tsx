@@ -30,7 +30,33 @@ type ViewMode = "findings" | "files";
 
 const STATUS_RANK: Record<FindingStatus, number> = { new: 0, open: 1, fixed: 2 };
 
-const PRINT_STYLES = `
+const REPORT_STYLES = `
+.report-rise {
+  animation: report-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes report-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-rise {
+    animation: none;
+  }
+}
+@media print {
+  .report-root .report-rise {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @media print {
   .report-root {
     background: #ffffff !important;
@@ -218,6 +244,7 @@ export function ReportView({ data }: { data: ReportData }) {
   })();
 
   const visibleRows = rows.slice(0, visible);
+  const firstToFix = current[0] ?? null;
   const activeFinding =
     data.findings.find((finding) => finding.id === selectedId) ??
     filtered[0] ??
@@ -350,7 +377,7 @@ export function ReportView({ data }: { data: ReportData }) {
 
   return (
     <div className="report-root min-h-full bg-[var(--bg)] pb-20 font-sans text-[var(--fg)] [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans">
-      <style>{PRINT_STYLES}</style>
+      <style>{REPORT_STYLES}</style>
 
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* ---------------------------------------------------------- header */}
@@ -386,7 +413,7 @@ export function ReportView({ data }: { data: ReportData }) {
           </div>
 
           {/* score + verdict + one plain sentence */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/70 p-4 sm:p-5 print-plain">
+          <div className="report-rise mt-6 flex flex-wrap items-center gap-x-5 gap-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/70 p-4 sm:p-5 print-plain">
             <ScoreRing score={data.score} size={92} strokeWidth={7} />
 
             <div className="min-w-0 flex-1">
@@ -403,7 +430,7 @@ export function ReportView({ data }: { data: ReportData }) {
                     onBlur={() => setShowScoreTip(false)}
                     aria-expanded={showScoreTip}
                     aria-label="How is this score calculated?"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:text-[var(--fg)] print-hide"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:text-[var(--fg)] print-hide"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                       <path
@@ -599,6 +626,58 @@ export function ReportView({ data }: { data: ReportData }) {
               previous scan of this repo.
             </p>
           )}
+
+          {firstToFix && (
+            <section
+              aria-labelledby="fix-this-first"
+              className="report-rise mt-5 rounded-2xl border border-[var(--squiggle-red)]/25 bg-[var(--squiggle-red-subtle)]/40 p-4 print-block print-plain"
+            >
+              <h2
+                id="fix-this-first"
+                className="font-sans text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]"
+              >
+                Fix this first
+              </h2>
+              <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${severityText(firstToFix.severity)}`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${severityDot(firstToFix.severity)}`}
+                      aria-hidden="true"
+                    />
+                    {SEVERITY_LABEL[firstToFix.severity]}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-[16px] font-medium leading-snug text-[var(--fg)]">
+                    {firstToFix.title}
+                  </p>
+                  <p className="mt-1 truncate font-mono text-[12px] text-[var(--muted)]">
+                    {firstToFix.file}:{firstToFix.line}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 print-hide">
+                  <button
+                    type="button"
+                    onClick={() => select(firstToFix)}
+                    className="inline-flex min-h-11 items-center rounded-lg bg-[var(--fg)] px-4 text-[14px] font-semibold text-[var(--bg)] transition-opacity hover:opacity-90"
+                  >
+                    Open
+                  </button>
+                  {data.aiEnabled && userOptIn && (
+                    <button
+                      type="button"
+                      onClick={() => setAskRequest({ finding: firstToFix, nonce: Date.now() })}
+                      className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 text-[14px] font-medium text-[var(--fg)] transition-colors hover:bg-[var(--surface-hover)]"
+                    >
+                      Ask AI
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
         </header>
 
         {/* --------------------------------------------------- what we checked */}
@@ -724,7 +803,7 @@ export function ReportView({ data }: { data: ReportData }) {
                   type="button"
                   onClick={() => setView(mode)}
                   aria-pressed={view === mode}
-                  className={`inline-flex min-h-9 items-center rounded-md px-3 text-[13px] transition-colors ${
+                  className={`inline-flex min-h-11 items-center rounded-md px-3 text-[13px] transition-colors ${
                     view === mode
                       ? "bg-[var(--surface-hover)] font-semibold text-[var(--fg)]"
                       : "text-[var(--muted)] hover:text-[var(--fg)]"
@@ -741,7 +820,7 @@ export function ReportView({ data }: { data: ReportData }) {
                 <select
                   value={sort}
                   onChange={(event) => setSort(event.target.value as SortMode)}
-                  className="min-h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 text-[13px] text-[var(--fg)]"
+                  className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 text-[13px] text-[var(--fg)]"
                 >
                   <option value="severity">Sort: severity</option>
                   <option value="file">Sort: file</option>
@@ -795,7 +874,7 @@ export function ReportView({ data }: { data: ReportData }) {
                 type="button"
                 onClick={() => setSeverityFilter("all")}
                 aria-pressed={severityFilter === "all"}
-                className={`inline-flex min-h-10 items-center rounded-lg border px-2.5 text-[13px] ${
+                className={`inline-flex min-h-11 items-center rounded-lg border px-2.5 text-[13px] ${
                   severityFilter === "all"
                     ? "border-[var(--fg)]/40 bg-[var(--surface-hover)] text-[var(--fg)]"
                     : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]"
@@ -809,7 +888,7 @@ export function ReportView({ data }: { data: ReportData }) {
                   type="button"
                   onClick={() => setSeverityFilter(severityFilter === severity ? "all" : severity)}
                   aria-pressed={severityFilter === severity}
-                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] ${
                     severityFilter === severity
                       ? "border-[var(--fg)]/40 bg-[var(--surface-hover)] text-[var(--fg)]"
                       : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]"
@@ -828,7 +907,7 @@ export function ReportView({ data }: { data: ReportData }) {
                   type="button"
                   onClick={() => setCategoryFilter(categoryFilter === category ? "all" : category)}
                   aria-pressed={categoryFilter === category}
-                  className={`inline-flex min-h-10 items-center rounded-lg border px-2.5 text-[13px] ${
+                  className={`inline-flex min-h-11 items-center rounded-lg border px-2.5 text-[13px] ${
                     categoryFilter === category
                       ? "border-[var(--fg)]/40 bg-[var(--surface-hover)] text-[var(--fg)]"
                       : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]"
