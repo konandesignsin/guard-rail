@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
-import type { FindingReportItem } from "@/app/dashboard/split-report-view";
+import type { FindingReportItem } from "@/lib/report/types";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -16,6 +16,11 @@ interface AiChatPanelProps {
   isAiGlobalEnabled: boolean;
   initialUserOptIn: boolean;
   providerName: string;
+  /**
+   * Set by the report when a finding asks for a chat. The report remounts the
+   * panel with this value, so a fresh conversation opens on that finding.
+   */
+  initialAsk?: FindingReportItem | null;
 }
 
 const STARTER_SUGGESTIONS = [
@@ -34,15 +39,20 @@ export function AiChatPanel({
   isAiGlobalEnabled,
   initialUserOptIn,
   providerName,
+  initialAsk = null,
 }: AiChatPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(!!initialAsk);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [focusedFinding, setFocusedFinding] = useState<FindingReportItem | null>(null);
+  const [focusedFinding, setFocusedFinding] = useState<FindingReportItem | null>(
+    initialAsk ?? null,
+  );
   const [userOptIn, setUserOptIn] = useState(initialUserOptIn);
-  const [showOptInNotice, setShowOptInNotice] = useState(false);
+  const [showOptInNotice, setShowOptInNotice] = useState(
+    !!initialAsk && !initialUserOptIn,
+  );
   const [limitReached, setLimitReached] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
   const [dailyUsed, setDailyUsed] = useState(0);
