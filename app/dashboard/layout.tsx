@@ -78,7 +78,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const activeItem = navItems.find((item) => isActivePath(pathname, item.href));
 
   return (
-    <div className="flex h-[100svh] w-full flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)] md:flex-row">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)] md:flex-row">
       {/* Desktop sidebar (collapsible) */}
       <aside
         className={`hidden shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width] duration-200 md:flex ${
