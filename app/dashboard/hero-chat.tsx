@@ -385,206 +385,197 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
         }}
       />
 
-      {/* Content */}
-      <div className="relative z-10 flex h-full flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex min-h-full flex-col justify-center px-4 py-8 sm:px-6">
-            <div className="mx-auto w-full max-w-[680px]">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: enter }}
-                className="text-center"
-              >
-                <h1 className="text-balance font-display text-[28px] font-medium leading-tight tracking-tight text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.65)] sm:text-4xl md:text-5xl">
-                  Ask GuardRail before you ship.
-                </h1>
-                <p className="mx-auto mt-3 max-w-[34ch] text-pretty text-sm leading-relaxed text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)] sm:max-w-none sm:text-base">
-                  Paste a public GitHub repo to scan, or ask a security question. Nothing is stored.
+      {/* Content: headline top, scrollable messages middle, input pinned bottom */}
+      <div className="relative z-10 flex h-full flex-col px-4 sm:px-6">
+        {/* Headline — fixed at top */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: enter }}
+          className="shrink-0 pt-8 text-center sm:pt-10"
+        >
+          <h1 className="text-balance font-display text-[28px] font-medium leading-tight tracking-tight text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.65)] sm:text-4xl md:text-5xl">
+            Ask GuardRail before you ship.
+          </h1>
+          <p className="mx-auto mt-3 max-w-[34ch] text-pretty text-sm leading-relaxed text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)] sm:max-w-none sm:text-base">
+            Paste a public GitHub repo to scan, or ask a security question. Nothing is stored.
+          </p>
+        </motion.div>
+
+        {/* Messages / suggestions — fills middle, scrolls when content overflows */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-6">
+          <div className={`mx-auto w-full max-w-[680px] ${!hasMessages ? "flex min-h-full flex-col items-center justify-center" : ""}`}>
+            {showOptIn ? (
+              <div className="mx-auto max-w-md rounded-2xl border border-white/20 bg-[#0b0e16]/95 p-5 text-center shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                <p className="text-sm leading-relaxed text-white/85">
+                  Enable the AI assistant to ask security questions. Messages are sent to the configured AI
+                  provider.
                 </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: enter, delay: reducedMotion ? 0 : 0.12 }}
-                className="mt-6"
-              >
-                {showOptIn ? (
-                  <div className="mx-auto max-w-md rounded-2xl border border-white/20 bg-[#0b0e16]/95 p-5 text-center shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md">
-                    <p className="text-sm leading-relaxed text-white/85">
-                      Enable the AI assistant to ask security questions. Messages are sent to the configured AI
-                      provider.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleOptIn}
-                      className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#ff8a5c] px-5 text-sm font-semibold text-[#160a03] transition-colors hover:bg-[#ffa078] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0e16]"
-                    >
-                      Enable AI Assistant
-                    </button>
-                  </div>
-                ) : !hasMessages ? (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {SUGGESTIONS.map((s) => (
-                      <button
-                        key={s.text}
-                        type="button"
-                        onClick={() => handleSuggestion(s)}
-                        className="inline-flex min-h-11 max-w-full items-center justify-center rounded-full border border-white/25 bg-black/60 px-4 py-2.5 text-center text-sm font-medium text-white backdrop-blur-md transition-colors hover:border-white/40 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8a5c] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                      >
-                        {s.text}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div
-                    className="max-h-[34svh] space-y-3 overflow-y-auto overscroll-contain px-0.5 py-1"
-                    aria-live="polite"
+                <button
+                  type="button"
+                  onClick={handleOptIn}
+                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[#ff8a5c] px-5 text-sm font-semibold text-[#160a03] transition-colors hover:bg-[#ffa078] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0e16]"
+                >
+                  Enable AI Assistant
+                </button>
+              </div>
+            ) : !hasMessages ? (
+              <div className="flex w-full flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s.text}
+                    type="button"
+                    onClick={() => handleSuggestion(s)}
+                    className="inline-flex min-h-11 max-w-full items-center justify-center rounded-full border border-white/25 bg-black/60 px-4 py-2.5 text-center text-sm font-medium text-white backdrop-blur-md transition-colors hover:border-white/40 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8a5c] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   >
-                    <AnimatePresence initial={false}>
-                      {messages.map((msg, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: reducedMotion ? 0 : 0.25 }}
-                          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[92%] rounded-2xl border px-4 py-2.5 text-sm leading-relaxed sm:max-w-[85%] ${
-                              msg.role === "user"
-                                ? "border-white/20 bg-white/15 text-white"
-                                : "border-white/15 bg-black/55 text-white/95"
-                            } backdrop-blur-md`}
-                          >
-                            {msg.role === "assistant" ? (
-                              <div className="prose-chat">
-                                <ReactMarkdown
-                                  components={{
-                                    p: ({ children, ...props }) => (
-                                      <p className="mb-2 last:mb-0" {...props}>{children}</p>
-                                    ),
-                                    strong: ({ children, ...props }) => (
-                                      <strong className="font-semibold" {...props}>{children}</strong>
-                                    ),
-                                    code: ({ children, ...props }) => (
-                                      <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-xs" {...props}>{children}</code>
-                                    ),
-                                    ul: ({ children, ...props }) => (
-                                      <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0" {...props}>{children}</ul>
-                                    ),
-                                    ol: ({ children, ...props }) => (
-                                      <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" {...props}>{children}</ol>
-                                    ),
-                                  }}
-                                >
-                                  {msg.content}
-                                </ReactMarkdown>
-                              </div>
-                            ) : (
-                              <div className="break-words whitespace-pre-wrap">{msg.content}</div>
-                            )}
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3 px-0.5 py-1" aria-live="polite">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: reducedMotion ? 0 : 0.25 }}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[92%] rounded-2xl border px-4 py-2.5 text-sm leading-relaxed sm:max-w-[85%] ${
+                          msg.role === "user"
+                            ? "border-white/20 bg-white/15 text-white"
+                            : "border-white/15 bg-black/55 text-white/95"
+                        } backdrop-blur-md`}
+                      >
+                        {msg.role === "assistant" ? (
+                          <div className="prose-chat">
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children, ...props }) => (
+                                  <p className="mb-2 last:mb-0" {...props}>{children}</p>
+                                ),
+                                strong: ({ children, ...props }) => (
+                                  <strong className="font-semibold" {...props}>{children}</strong>
+                                ),
+                                code: ({ children, ...props }) => (
+                                  <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-xs" {...props}>{children}</code>
+                                ),
+                                ul: ({ children, ...props }) => (
+                                  <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0" {...props}>{children}</ul>
+                                ),
+                                ol: ({ children, ...props }) => (
+                                  <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0" {...props}>{children}</ol>
+                                ),
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
                           </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-
-                    {busy && (
-                      <div className="flex justify-start">
-                        <div className="flex items-center gap-2.5 rounded-2xl border border-white/15 bg-black/55 px-4 py-3 backdrop-blur-md">
-                          <div className="flex gap-1.5">
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:0ms] motion-reduce:animate-none" />
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:150ms] motion-reduce:animate-none" />
-                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:300ms] motion-reduce:animate-none" />
-                          </div>
-                          <span className="text-xs text-white/85">
-                            {isScanning ? "Scanning repository…" : "Thinking…"}
-                          </span>
-                        </div>
+                        ) : (
+                          <div className="break-words whitespace-pre-wrap">{msg.content}</div>
+                        )}
                       </div>
-                    )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
-                    {error && (
-                      <div className="flex flex-wrap items-start gap-2 rounded-xl border border-red-400/40 bg-red-950/70 px-4 py-2.5 text-xs leading-relaxed text-red-100">
-                        <span className="flex-1">{error}</span>
-                        <button
-                          type="button"
-                          onClick={() => setError(null)}
-                          className="underline underline-offset-2 hover:text-white"
-                        >
-                          Dismiss
-                        </button>
+                {busy && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-2.5 rounded-2xl border border-white/15 bg-black/55 px-4 py-3 backdrop-blur-md">
+                      <div className="flex gap-1.5">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:0ms] motion-reduce:animate-none" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:150ms] motion-reduce:animate-none" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/70 [animation-delay:300ms] motion-reduce:animate-none" />
                       </div>
-                    )}
-
-                    <div ref={messagesEndRef} />
+                      <span className="text-xs text-white/85">
+                        {isScanning ? "Scanning repository…" : "Thinking…"}
+                      </span>
+                    </div>
                   </div>
                 )}
-              </motion.div>
 
-              {/* Chat input */}
-              {!showOptIn && (
-                <form onSubmit={handleSubmit} className="mt-4">
-                  <div className="rounded-2xl border border-white/30 bg-[#0b0e16]/95 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.55)] backdrop-blur-md transition-colors focus-within:border-[#ff8a5c]/80 focus-within:ring-2 focus-within:ring-[#ff8a5c]/60">
-                    <div className="flex items-end gap-2">
-                      <label htmlFor="dashboard-chat-input" className="sr-only">
-                        Ask GuardRail
-                      </label>
-                      <textarea
-                        id="dashboard-chat-input"
-                        ref={inputRef}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Paste a GitHub repo URL or ask a security question"
-                        disabled={busy}
-                        rows={2}
-                        className="max-h-[120px] min-h-11 w-full flex-1 resize-none bg-transparent px-1.5 py-2 text-base leading-relaxed text-white outline-none placeholder:text-white/60 disabled:opacity-60"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!input.trim() || busy}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ff8a5c] text-[#160a03] transition-colors hover:bg-[#ffa078] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0e16] disabled:cursor-not-allowed disabled:opacity-45"
-                        aria-label="Send message"
-                      >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1.5">
-                      <span className="font-mono text-[11px] tabular-nums text-white/60">
-                        {input.length}/{MAX_MESSAGE_LENGTH}
-                      </span>
-                      <span className="text-[11px] text-white/70">
-                        AI can make mistakes. Verify before applying.
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-center text-[10px] text-white/40">
-                      Don&apos;t paste secrets or private code. We mask secrets before AI sees your message.
-                    </p>
+                {error && (
+                  <div className="flex flex-wrap items-start gap-2 rounded-xl border border-red-400/40 bg-red-950/70 px-4 py-2.5 text-xs leading-relaxed text-red-100">
+                    <span className="flex-1">{error}</span>
+                    <button
+                      type="button"
+                      onClick={() => setError(null)}
+                      className="underline underline-offset-2 hover:text-white"
+                    >
+                      Dismiss
+                    </button>
                   </div>
-                </form>
-              )}
+                )}
 
-              <div className="mt-4 text-center">
-                <Link
-                  href="/dashboard/scans"
-                  className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-white/75 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white hover:decoration-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                >
-                  View your scans
-                </Link>
+                <div ref={messagesEndRef} />
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Image credit */}
-        <p className="shrink-0 px-4 pb-3 text-center text-[10px] leading-snug text-white/35">
-          Earth imagery: NASA&apos;s Scientific Visualization Studio. Data courtesy of Reto Stockli (NASA/GSFC).
-          Public domain.
-        </p>
+        {/* Chat input — pinned at bottom */}
+        {!showOptIn && (
+          <form onSubmit={handleSubmit} className="shrink-0 pb-2">
+            <div className="mx-auto w-full max-w-[680px]">
+              <div className="rounded-2xl border border-white/30 bg-[#0b0e16]/95 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.55)] backdrop-blur-md transition-colors focus-within:border-[#ff8a5c]/80 focus-within:ring-2 focus-within:ring-[#ff8a5c]/60">
+                <div className="flex items-end gap-2">
+                  <label htmlFor="dashboard-chat-input" className="sr-only">
+                    Ask GuardRail
+                  </label>
+                  <textarea
+                    id="dashboard-chat-input"
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Paste a GitHub repo URL or ask a security question"
+                    disabled={busy}
+                    rows={2}
+                    className="max-h-[120px] min-h-11 w-full flex-1 resize-none bg-transparent px-1.5 py-2 text-base leading-relaxed text-white outline-none placeholder:text-white/60 disabled:opacity-60"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || busy}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#ff8a5c] text-[#160a03] transition-colors hover:bg-[#ffa078] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0e16] disabled:cursor-not-allowed disabled:opacity-45"
+                    aria-label="Send message"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1.5">
+                  <span className="font-mono text-[11px] tabular-nums text-white/60">
+                    {input.length}/{MAX_MESSAGE_LENGTH}
+                  </span>
+                  <span className="text-[11px] text-white/70">
+                    AI can make mistakes. Verify before applying.
+                  </span>
+                </div>
+                <p className="mt-1.5 text-center text-[10px] text-white/40">
+                  Don&apos;t paste secrets or private code. We mask secrets before AI sees your message.
+                </p>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Scan link + credit */}
+        <div className="shrink-0 pb-3 text-center">
+          <Link
+            href="/dashboard/scans"
+            className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-white/75 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white hover:decoration-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            View your scans
+          </Link>
+          <p className="mt-1 text-[10px] leading-snug text-white/35">
+            Earth imagery: NASA&apos;s Scientific Visualization Studio. Data courtesy of Reto Stockli (NASA/GSFC).
+            Public domain.
+          </p>
+        </div>
       </div>
 
       {/* Repo picker modal */}
