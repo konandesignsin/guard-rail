@@ -67,9 +67,10 @@ async function ScansContent() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--fg)]">All Scans</h1>
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10 space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--fg)]">All Scans</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Your complete scan history, newest first.
         </p>
@@ -155,6 +156,7 @@ async function ScansContent() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

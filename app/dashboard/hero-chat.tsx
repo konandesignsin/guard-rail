@@ -57,7 +57,6 @@ function useIsDataSaver() {
   return saver;
 }
 
-/** True while the viewport is phone-sized so we can ship lighter media. */
 const SMALL_SCREEN_QUERY = "(max-width: 767px)";
 
 function subscribeSmallScreen(onChange: () => void) {
@@ -71,7 +70,6 @@ function getSmallScreenSnapshot() {
 }
 
 function getSmallScreenServerSnapshot() {
-  // Unknown while server-rendering: start with the poster only, never both media.
   return null;
 }
 
@@ -105,7 +103,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
     messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
   }, [messages, isLoading, isScanning, reducedMotion]);
 
-  // Pause the loop when the hero scrolls out of view
   useEffect(() => {
     if (showPosterOnly) return;
     const el = heroRef.current;
@@ -126,7 +123,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
     return () => observer.disconnect();
   }, [showPosterOnly, isSmallScreen]);
 
-  // Pause when the tab is hidden
   useEffect(() => {
     if (showPosterOnly) return;
     const vid = videoRef.current;
@@ -183,7 +179,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           if (data.requiresOptIn) {
             return { error: "", requiresOptIn: true };
           }
-          // Retry on 503/429
           if ((res.status === 503 || res.status === 429) && attempt < MAX_RETRIES) {
             const delay = RETRY_DELAYS[attempt] || 2000;
             await new Promise((r) => setTimeout(r, delay));
@@ -215,8 +210,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
       const trimmed = rawText.trim();
       if (!trimmed || busy) return;
 
-      // A GitHub repo URL starts a scan: show what was asked, then hand off
-      // to the scan report page once the scan is queued.
       if (GITHUB_REPO_REGEX.test(trimmed)) {
         setInput("");
         setError(null);
@@ -278,7 +271,6 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
       inputRef.current?.focus();
       return;
     }
-    // "ask" - auto-submit with the suggestion text
     handleSubmit(undefined, suggestion.text);
   };
 
@@ -286,103 +278,129 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const enter = reducedMotion ? 0 : 0.5;
 
   return (
-    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#05060a]">
-      {/* Earth background */}
-      <div className="absolute inset-0" aria-hidden="true">
-        <Image
-          src="/videos/earth-poster.jpg"
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 767px) 100vw, 100vw"
-          className="object-cover object-[50%_68%]"
-        />
-
-        {!showPosterOnly && isSmallScreen !== null && (
-          <video
-            key={isSmallScreen ? "earth-sm" : "earth-lg"}
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/videos/earth-poster.jpg"
-            onLoadedData={() => setVideoLoaded(true)}
-            onError={() => setVideoFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover object-[50%_68%] transition-opacity duration-500"
-            style={{ opacity: videoLoaded ? 1 : 0 }}
-          >
-            <source src={isSmallScreen ? "/videos/earth-sm.webm" : "/videos/earth.webm"} type="video/webm" />
-            <source src={isSmallScreen ? "/videos/earth-sm.mp4" : "/videos/earth.mp4"} type="video/mp4" />
-          </video>
-        )}
-
-        {/* Soft dark scrim so legibility never depends on image brightness */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(4,5,8,0.62) 0%, rgba(4,5,8,0.80) 32%, rgba(4,5,8,0.84) 68%, rgba(4,5,8,0.66) 100%)",
-          }}
-        />
-
-        {/* Radial scrim directly behind the headline and input */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(72% 48% at 50% 54%, rgba(3,4,9,0.78) 0%, rgba(3,4,9,0.5) 58%, rgba(3,4,9,0) 100%)",
-          }}
-        />
-
-        {/* Radial vignette for depth at the edges */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(110% 100% at 50% 46%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)",
-          }}
-        />
-      </div>
-
-      {/* Atmospheric ambient glow behind the chat box */}
+    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#04060d]">
+      {/* Star field */}
       <div
-        className="pointer-events-none absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 w-[700px] h-[360px] rounded-full blur-3xl"
+        className="pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          background: "radial-gradient(circle, rgba(70,130,255,0.18) 0%, rgba(30,70,180,0.08) 50%, rgba(4,6,13,0) 80%)",
+          backgroundImage: `
+            radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1.5px 1.5px at 120px 80px, rgba(255,255,255,0.6), transparent),
+            radial-gradient(1px 1px at 240px 150px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 380px 60px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1px 1px at 520px 220px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 680px 110px, rgba(255,255,255,0.8), transparent),
+            radial-gradient(1px 1px at 820px 290px, rgba(255,255,255,0.45), transparent),
+            radial-gradient(1.5px 1.5px at 940px 70px, rgba(255,255,255,0.65), transparent),
+            radial-gradient(1px 1px at 1080px 190px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 1220px 130px, rgba(255,255,255,0.75), transparent),
+            radial-gradient(1px 1px at 1360px 250px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 1480px 90px, rgba(255,255,255,0.6), transparent)
+          `,
+          backgroundSize: "600px 350px",
         }}
       />
 
-      {/* Atmospheric ambient glow behind the globe */}
+      {/* Spherical globe anchored at bottom center — top ~35-40% visible */}
       <div
-        className="pointer-events-none absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[20%] w-[90vw] max-w-[950px] h-[300px] rounded-full blur-3xl"
+        className="pointer-events-none absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[62%] aspect-square w-[85vw] max-w-[900px] rounded-full sm:w-[70vw]"
+        aria-hidden="true"
+        style={{
+          boxShadow: "0 -4px 45px 4px rgba(70,140,255,0.45), 0 -1px 15px 1px rgba(140,190,255,0.6)",
+        }}
+      >
+        <div className="relative h-full w-full overflow-hidden rounded-full">
+          <Image
+            src="/videos/earth-poster.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 767px) 85vw, (max-width: 1200px) 70vw, 900px"
+            className="object-cover object-[50%_40%]"
+          />
+
+          {!showPosterOnly && isSmallScreen !== null && (
+            <video
+              key={isSmallScreen ? "earth-sm" : "earth-lg"}
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/videos/earth-poster.jpg"
+              onLoadedData={() => setVideoLoaded(true)}
+              onError={() => setVideoFailed(true)}
+              className="absolute inset-0 h-full w-full object-cover object-[50%_40%] transition-opacity duration-500"
+              style={{ opacity: videoLoaded ? 1 : 0 }}
+            >
+              <source src={isSmallScreen ? "/videos/earth-sm.webm" : "/videos/earth.webm"} type="video/webm" />
+              <source src={isSmallScreen ? "/videos/earth-sm.mp4" : "/videos/earth.mp4"} type="video/mp4" />
+            </video>
+          )}
+
+          {/* Thin bright atmosphere rim */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              boxShadow: "inset 0 3px 6px 1px rgba(220,240,255,0.85), inset 0 1px 2px 0 rgba(255,255,255,0.95)",
+            }}
+          />
+
+          {/* Inner shadow — spherical lighting */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              boxShadow: "inset 0 16px 50px 10px rgba(100,165,255,0.35), inset 0 -40px 80px rgba(0,0,0,0.8)",
+            }}
+          />
+
+          {/* Radial gradient — lighter at top, darker toward edges for sphere illusion */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 12%, rgba(255,255,255,0.12) 0%, rgba(10,25,60,0.1) 25%, rgba(4,8,20,0.55) 60%, rgba(2,4,12,0.92) 90%, rgba(1,2,8,0.98) 100%)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Atmospheric glow behind globe */}
+      <div
+        className="pointer-events-none absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[20%] h-[300px] w-[90vw] max-w-[950px] rounded-full blur-3xl"
         aria-hidden="true"
         style={{
           background: "radial-gradient(circle, rgba(60,130,255,0.2) 0%, rgba(20,50,140,0.08) 50%, rgba(4,6,13,0) 80%)",
         }}
       />
 
-      {/* Content: headline top, scrollable messages middle, input pinned bottom */}
+      {/* Content: three-zone flex column */}
       <div className="relative z-10 flex h-full flex-col px-4 sm:px-6">
-        {/* Headline — fixed at top */}
+        {/* Zone 1: Headline — shrinks when messages present */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: enter }}
-          className="shrink-0 pt-8 text-center sm:pt-10"
+          className={`shrink-0 text-center transition-all duration-300 ${hasMessages ? "pt-4" : "pt-8 sm:pt-10"}`}
         >
-          <h1 className="text-balance font-display text-[28px] font-medium leading-tight tracking-tight text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.65)] sm:text-4xl md:text-5xl">
+          <h1
+            className={`text-balance font-medium leading-tight tracking-tight text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.65)] transition-all duration-300 ${
+              hasMessages ? "text-lg sm:text-xl" : "text-[28px] sm:text-4xl md:text-5xl"
+            }`}
+          >
             Ask GuardRail before you ship.
           </h1>
-          <p className="mx-auto mt-3 max-w-[34ch] text-pretty text-sm leading-relaxed text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)] sm:max-w-none sm:text-base">
-            Paste a public GitHub repo to scan, or ask a security question. Nothing is stored.
-          </p>
+          {!hasMessages && (
+            <p className="mx-auto mt-3 max-w-[34ch] text-pretty text-sm leading-relaxed text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.7)] sm:max-w-none sm:text-base">
+              Paste a public GitHub repo to scan, or ask a security question. Nothing is stored.
+            </p>
+          )}
         </motion.div>
 
-        {/* Messages / suggestions — fills middle, scrolls when content overflows */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-6">
+        {/* Zone 2: Messages / suggestions — scrollable middle */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">
           <div className={`mx-auto w-full max-w-[680px] ${!hasMessages ? "flex min-h-full flex-col items-center justify-center" : ""}`}>
             {showOptIn ? (
               <div className="mx-auto max-w-md rounded-2xl border border-white/20 bg-[#0b0e16]/95 p-5 text-center shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md">
@@ -495,7 +513,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           </div>
         </div>
 
-        {/* Chat input — pinned at bottom */}
+        {/* Zone 3: Chat input — pinned at bottom */}
         {!showOptIn && (
           <form onSubmit={handleSubmit} className="shrink-0 pb-2">
             <div className="mx-auto w-full max-w-[680px]">
@@ -542,7 +560,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           </form>
         )}
 
-        {/* Scan link + credit */}
+        {/* Scan link + NASA credit */}
         <div className="shrink-0 pb-3 text-center">
           <Link
             href="/dashboard/scans"

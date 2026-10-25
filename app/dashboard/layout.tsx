@@ -171,7 +171,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <main className="min-h-0 h-full flex-1 overflow-hidden">{children}</main>
 
         {/* Mobile bottom tab bar */}
         <nav
