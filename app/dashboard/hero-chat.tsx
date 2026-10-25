@@ -286,65 +286,104 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const enter = reducedMotion ? 0 : 0.5;
 
   return (
-    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#05060a]">
-      {/* Earth background */}
-      <div className="absolute inset-0" aria-hidden="true">
-        <Image
-          src="/videos/earth-poster.jpg"
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 767px) 100vw, 100vw"
-          className="object-cover object-[50%_68%]"
-        />
+    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#04060d]">
+      {/* Star field background */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden="true"
+        style={{
+          backgroundImage: `
+            radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1.5px 1.5px at 120px 80px, rgba(255,255,255,0.6), transparent),
+            radial-gradient(1px 1px at 240px 150px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 380px 60px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1px 1px at 520px 220px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 680px 110px, rgba(255,255,255,0.8), transparent),
+            radial-gradient(1px 1px at 820px 290px, rgba(255,255,255,0.45), transparent),
+            radial-gradient(1.5px 1.5px at 940px 70px, rgba(255,255,255,0.65), transparent),
+            radial-gradient(1px 1px at 1080px 190px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 1220px 130px, rgba(255,255,255,0.75), transparent),
+            radial-gradient(1px 1px at 1360px 250px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 1480px 90px, rgba(255,255,255,0.6), transparent)
+          `,
+          backgroundSize: "600px 350px",
+        }}
+      />
 
-        {!showPosterOnly && isSmallScreen !== null && (
-          <video
-            key={isSmallScreen ? "earth-sm" : "earth-lg"}
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/videos/earth-poster.jpg"
-            onLoadedData={() => setVideoLoaded(true)}
-            onError={() => setVideoFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover object-[50%_68%] transition-opacity duration-500"
-            style={{ opacity: videoLoaded ? 1 : 0 }}
-          >
-            <source src={isSmallScreen ? "/videos/earth-sm.webm" : "/videos/earth.webm"} type="video/webm" />
-            <source src={isSmallScreen ? "/videos/earth-sm.mp4" : "/videos/earth.mp4"} type="video/mp4" />
-          </video>
-        )}
+      {/* Spherical Globe anchored at bottom center: top 35-40% visible above bottom */}
+      <div
+        className="pointer-events-none absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[62%] rounded-full aspect-square w-[85vw] max-w-[900px] sm:w-[70vw]"
+        aria-hidden="true"
+        style={{
+          boxShadow: "0 -4px 45px 4px rgba(70,140,255,0.45), 0 -1px 15px 1px rgba(140,190,255,0.6)",
+        }}
+      >
+        {/* Overflow-hidden container to clip image/video and inner shadows */}
+        <div className="relative h-full w-full rounded-full overflow-hidden">
+          <Image
+            src="/videos/earth-poster.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 767px) 85vw, (max-width: 1200px) 70vw, 900px"
+            className="object-cover object-[50%_40%]"
+          />
 
-        {/* Soft dark scrim so legibility never depends on image brightness */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(4,5,8,0.62) 0%, rgba(4,5,8,0.80) 32%, rgba(4,5,8,0.84) 68%, rgba(4,5,8,0.66) 100%)",
-          }}
-        />
+          {!showPosterOnly && isSmallScreen !== null && (
+            <video
+              key={isSmallScreen ? "earth-sm" : "earth-lg"}
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/videos/earth-poster.jpg"
+              onLoadedData={() => setVideoLoaded(true)}
+              onError={() => setVideoFailed(true)}
+              className="absolute inset-0 h-full w-full object-cover object-[50%_40%] transition-opacity duration-500"
+              style={{ opacity: videoLoaded ? 1 : 0 }}
+            >
+              <source src={isSmallScreen ? "/videos/earth-sm.webm" : "/videos/earth.webm"} type="video/webm" />
+              <source src={isSmallScreen ? "/videos/earth-sm.mp4" : "/videos/earth.mp4"} type="video/mp4" />
+            </video>
+          )}
 
-        {/* Radial scrim directly behind the headline and input */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(72% 48% at 50% 54%, rgba(3,4,9,0.78) 0%, rgba(3,4,9,0.5) 58%, rgba(3,4,9,0) 100%)",
-          }}
-        />
+          {/* Thin bright atmosphere rim along the top arc */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              boxShadow: "inset 0 3px 6px 1px rgba(220,240,255,0.85), inset 0 1px 2px 0 rgba(255,255,255,0.95)",
+            }}
+          />
 
-        {/* Radial vignette for depth at the edges */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(110% 100% at 50% 46%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)",
-          }}
-        />
+          {/* Inner shadow lighting edge from above + center darker than rim */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              boxShadow: "inset 0 16px 50px 10px rgba(100,165,255,0.35), inset 0 -40px 80px rgba(0,0,0,0.8)",
+            }}
+          />
+
+          {/* Spherical radial gradient overlay: lighter at top, darker toward sides & center */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 12%, rgba(255,255,255,0.12) 0%, rgba(10,25,60,0.1) 25%, rgba(4,8,20,0.55) 60%, rgba(2,4,12,0.92) 90%, rgba(1,2,8,0.98) 100%)",
+            }}
+          />
+        </div>
       </div>
+
+      {/* Atmospheric ambient glow behind the globe */}
+      <div
+        className="pointer-events-none absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-[20%] w-[90vw] max-w-[950px] h-[300px] rounded-full blur-3xl"
+        aria-hidden="true"
+        style={{
+          background: "radial-gradient(circle, rgba(60,130,255,0.2) 0%, rgba(20,50,140,0.08) 50%, rgba(4,6,13,0) 80%)",
+        }}
+      />
 
       {/* Content */}
       <div className="relative z-10 flex h-full flex-col">
@@ -522,6 +561,9 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
                         AI can make mistakes. Verify before applying.
                       </span>
                     </div>
+                    <p className="mt-1.5 text-center text-[10px] text-white/40">
+                      Don&apos;t paste secrets or private code. We mask secrets before AI sees your message.
+                    </p>
                   </div>
                 </form>
               )}

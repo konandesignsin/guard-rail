@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
+import { isEmailAllowed, resolveProviderConfig, callNvidiaChat } from "@/lib/ai";
+import { redactSnippet } from "@/lib/ai/redact";
 
 const DAILY_LIMIT = 20;
 const MAX_MESSAGE_LENGTH = 500;
@@ -59,42 +61,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI opt-in required", requiresOptIn: true }, { status: 403 });
     }
 
-    const aiEnabled = process.env.AI_ENABLED === "true";
-    if (!aiEnabled) {
+    // Email allowlist check (server-side only, case-insensitive)
+    if (!isEmailAllowed(user.email)) {
       return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
     }
 
-    const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-    let model = process.env.AI_MODEL;
-    let apiKey = "";
-
-    if (provider === "gemini") {
-      model = model || "gemini-3.8-flash";
-      apiKey = process.env.GEMINI_API_KEY || "";
-    } else if (provider === "groq") {
-      apiKey = process.env.GROQ_API_KEY || "";
-      if (!model) {
-        return NextResponse.json({ error: "AI model not configured" }, { status: 500 });
-      }
-    } else {
-      return NextResponse.json({ error: "AI provider not configured" }, { status: 500 });
+    const config = resolveProviderConfig();
+    if (!config.enabled) {
+      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
     }
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
+    const { provider, model, apiKey } = config;
+    const resolvedModel = provider === "gemini" ? (model || "gemini-3.8-flash") : model;
+    if (!resolvedModel && provider !== "gemini") {
+      return NextResponse.json({ error: "AI model not configured" }, { status: 500 });
     }
+
+    // Redact user message before sending to AI
+    const redactedMessage = redactSnippet(message);
+    const redactedHistory = history.map((h) => ({
+      role: h.role,
+      content: h.role === "user" ? redactSnippet(h.content) : h.content,
+    }));
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...history.map((h) => ({ role: h.role, content: h.content })),
-      { role: "user", content: message },
+      ...redactedHistory.map((h) => ({ role: h.role, content: h.content })),
+      { role: "user", content: redactedMessage },
     ];
 
     let responseText = "";
 
     try {
       if (provider === "gemini") {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(resolvedModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const contents = messages
           .filter((m) => m.role !== "system")
           .map((m) => ({
@@ -128,6 +128,9 @@ export async function POST(req: NextRequest) {
         } finally {
           clearTimeout(timeoutId);
         }
+      } else if (provider === "nvidia") {
+        const result = await callNvidiaChat(apiKey, resolvedModel, messages, REQUEST_TIMEOUT_MS);
+        responseText = result.text;
       } else {
         const url = "https://api.groq.com/openai/v1/chat/completions";
         const controller = new AbortController();
@@ -141,7 +144,7 @@ export async function POST(req: NextRequest) {
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-              model,
+              model: resolvedModel,
               messages,
               temperature: 0.7,
               max_tokens: 800,

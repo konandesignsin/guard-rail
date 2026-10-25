@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { scans, findings, aiChatUsage, users } from "@/db/schema";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { redactSnippet, isForbiddenFile } from "@/lib/ai/redact";
-import { PROMPT_VERSION } from "@/lib/ai";
+import { PROMPT_VERSION, isEmailAllowed, resolveProviderConfig, callNvidiaChat } from "@/lib/ai";
 
 const CHAT_DAILY_LIMIT = parseInt(process.env.AI_CHAT_DAILY_LIMIT || "30", 10);
 const CHAT_PER_MINUTE_LIMIT = 5;
@@ -88,9 +88,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Email allowlist check (server-side only, case-insensitive)
+    if (!isEmailAllowed(user.email)) {
+      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+    }
+
     // 5. Check AI_ENABLED
-    const aiEnabled = process.env.AI_ENABLED === "true";
-    if (!aiEnabled) {
+    const config = resolveProviderConfig();
+    if (!config.enabled) {
       return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
     }
 
@@ -202,33 +207,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 9. Build messages array
+    // Redact user message and history before sending to AI
+    const redactedMessage = redactSnippet(message);
+    const redactedHistory = history.map((h) => ({
+      role: h.role,
+      content: h.role === "user" ? redactSnippet(h.content) : h.content,
+    }));
+
     const messages = [
       { role: "system", content: systemPrompt },
       { role: "system", content: contextMessage },
-      ...history.map((h) => ({ role: h.role, content: h.content })),
-      { role: "user", content: message },
+      ...redactedHistory.map((h) => ({ role: h.role, content: h.content })),
+      { role: "user", content: redactedMessage },
     ];
 
     // 10. Call AI provider
-    const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-    let model = process.env.AI_MODEL;
-    let apiKey = "";
-
-    if (provider === "gemini") {
-      model = model || process.env.AI_MODEL || "gemini-3.8-flash";
-      apiKey = process.env.GEMINI_API_KEY || "";
-    } else if (provider === "groq") {
-      apiKey = process.env.GROQ_API_KEY || "";
-      if (!model) {
-        return NextResponse.json({ error: "AI model not configured" }, { status: 500 });
-      }
-    } else {
-      return NextResponse.json({ error: "AI provider not configured" }, { status: 500 });
-    }
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
-    }
+    const { provider, model: configModel, apiKey } = config;
+    const resolvedModel = provider === "gemini" ? (configModel || "gemini-3.8-flash") : configModel;
 
     // Try streaming first, fall back to non-streaming
     let responseText = "";
@@ -236,11 +231,15 @@ export async function POST(req: NextRequest) {
 
     try {
       if (provider === "gemini") {
-        const result = await callGeminiChat(apiKey, model, messages, REQUEST_TIMEOUT_MS);
+        const result = await callGeminiChat(apiKey, resolvedModel, messages, REQUEST_TIMEOUT_MS);
+        responseText = result.text;
+        tokenCount = result.tokenCount;
+      } else if (provider === "nvidia") {
+        const result = await callNvidiaChat(apiKey, resolvedModel, messages, REQUEST_TIMEOUT_MS);
         responseText = result.text;
         tokenCount = result.tokenCount;
       } else {
-        const result = await callGroqChat(apiKey, model, messages, REQUEST_TIMEOUT_MS);
+        const result = await callGroqChat(apiKey, resolvedModel, messages, REQUEST_TIMEOUT_MS);
         responseText = result.text;
         tokenCount = result.tokenCount;
       }
