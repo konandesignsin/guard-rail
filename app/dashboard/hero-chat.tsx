@@ -82,13 +82,14 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; action?: "opt-in" } | null>(null);
   const [showOptIn, setShowOptIn] = useState(!userOptIn && isAiEnabled);
   const [showRepoPicker, setShowRepoPicker] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -100,7 +101,13 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const busy = isLoading || isScanning;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    const threshold = 120;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (nearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
+    }
   }, [messages, isLoading, isScanning, reducedMotion]);
 
   useEffect(() => {
@@ -146,17 +153,25 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
 
   const handleOptIn = async () => {
     try {
-      const res = await fetch("/api/ai/opt-in", { method: "POST" });
+      const res = await fetch("/api/ai/opt-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      });
       if (res.ok) {
         setShowOptIn(false);
+        setError(null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError({ message: data.error || "Failed to enable AI. Please try again." });
       }
     } catch {
-      setError("Failed to opt in. Please try again.");
+      setError({ message: "Failed to opt in. Please try again." });
     }
   };
 
   const callAi = useCallback(
-    async (trimmed: string, history: ChatMessage[], attempt: number): Promise<{ response: string } | { error: string; status?: number; requiresOptIn?: boolean }> => {
+    async (trimmed: string, history: ChatMessage[], attempt: number): Promise<{ response: string } | { error: string; code?: string; status?: number; requiresOptIn?: boolean }> => {
       try {
         const res = await fetch("/api/ai/dashboard-chat", {
           method: "POST",
@@ -176,8 +191,8 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           if (res.status === 401) {
             return { error: "Your session expired. Refresh the page and try again.", status: 401 };
           }
-          if (data.requiresOptIn) {
-            return { error: "", requiresOptIn: true };
+          if (data.requiresOptIn || data.code === "ai_opt_in_required") {
+            return { error: "AI is turned off in Settings", code: "ai_opt_in_required", requiresOptIn: true };
           }
           if ((res.status === 503 || res.status === 429) && attempt < MAX_RETRIES) {
             const delay = RETRY_DELAYS[attempt] || 2000;
@@ -187,7 +202,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           if (res.status === 503 || res.status === 429) {
             return { error: "The AI is busy right now. Try again in a moment." };
           }
-          return { error: data.error || "Failed to get response.", status: res.status };
+          return { error: data.error || "Failed to get response.", code: data.code, status: res.status };
         }
 
         return { response: data.response || "" };
@@ -219,7 +234,9 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
         const result = await onRepoScan(trimmed);
         if (!result.ok) {
           setIsScanning(false);
-          setError(result.error ?? "Could not start the scan. Please verify the URL is public.");
+          setError({
+            message: result.error ?? "Could not start the scan. Please verify the URL is public.",
+          });
         }
         return;
       }
@@ -231,9 +248,20 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
       const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
       setMessages(newMessages);
 
-      if (showOptIn || !isAiEnabled) {
+      if (showOptIn) {
         setIsLoading(false);
-        setError("AI assistant requires opt-in. Click 'Enable AI' below to continue.");
+        setError({
+          message: "AI is turned off in Settings",
+          action: "opt-in",
+        });
+        return;
+      }
+
+      if (!isAiEnabled) {
+        setIsLoading(false);
+        setError({
+          message: "AI is disabled on this server",
+        });
         return;
       }
 
@@ -242,10 +270,16 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
       if ("response" in result) {
         setMessages([...newMessages, { role: "assistant", content: result.response }]);
       } else {
-        if (result.requiresOptIn) {
+        if (result.requiresOptIn || result.code === "ai_opt_in_required") {
           setShowOptIn(true);
+          setError({
+            message: "AI is turned off in Settings",
+            action: "opt-in",
+          });
         } else {
-          setError(result.error);
+          setError({
+            message: result.error,
+          });
         }
       }
 
@@ -278,7 +312,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const enter = reducedMotion ? 0 : 0.5;
 
   return (
-    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#04060d]">
+    <div ref={heroRef} className="relative min-h-0 h-full w-full overflow-hidden bg-[#04060d]">
       {/* Star field */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -377,7 +411,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
       />
 
       {/* Content: three-zone flex column */}
-      <div className="relative z-10 flex h-full flex-col px-4 sm:px-6">
+      <div className="relative z-10 flex min-h-0 h-full flex-col px-4 sm:px-6">
         {/* Zone 1: Headline — shrinks when messages present */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -400,7 +434,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
         </motion.div>
 
         {/* Zone 2: Messages / suggestions — scrollable middle */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">
+        <div ref={messagesScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pb-36">
           <div className={`mx-auto w-full max-w-[680px] ${!hasMessages ? "flex min-h-full flex-col items-center justify-center" : ""}`}>
             {showOptIn ? (
               <div className="mx-auto max-w-md rounded-2xl border border-white/20 bg-[#0b0e16]/95 p-5 text-center shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md">
@@ -495,8 +529,17 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
                 )}
 
                 {error && (
-                  <div className="flex flex-wrap items-start gap-2 rounded-xl border border-red-400/40 bg-red-950/70 px-4 py-2.5 text-xs leading-relaxed text-red-100">
-                    <span className="flex-1">{error}</span>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-400/40 bg-red-950/70 px-4 py-2.5 text-xs leading-relaxed text-red-100">
+                    <span className="flex-1">{error.message}</span>
+                    {error.action === "opt-in" && (
+                      <button
+                        type="button"
+                        onClick={handleOptIn}
+                        className="rounded-full bg-[#ff8a5c] px-3 py-1 text-xs font-semibold text-[#160a03] transition-colors hover:bg-[#ffa078]"
+                      >
+                        Turn on
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setError(null)}
