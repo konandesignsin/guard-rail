@@ -8,6 +8,7 @@ import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { ReportView } from "@/app/dashboard/report/report-view";
 import { ScanPending } from "@/app/dashboard/report/scan-pending";
 import { CHECK_LABELS, describeRule, fingerprintOf } from "@/lib/report/rules";
+import { resolveProviderConfig, isEmailAllowed } from "@/lib/ai";
 import type {
   ReportCheckSummary,
   ReportData,
@@ -239,11 +240,9 @@ async function ReportContent({ params }: Props) {
     files.push({ path, findingCount: stats.count, maxSeverity: stats.maxSeverity });
   }
 
-  const aiEnabledGlobal = process.env.AI_ENABLED === "true";
-  const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-  const hasKey =
-    (provider === "gemini" && !!process.env.GEMINI_API_KEY) ||
-    (provider === "groq" && !!process.env.GROQ_API_KEY && !!process.env.AI_MODEL);
+  const config = resolveProviderConfig();
+  const emailAllowed = isEmailAllowed(user.email);
+  const isAiAvailable = config.enabled && emailAllowed;
 
   const repoFullName = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repoName)
     ? repoName
@@ -266,7 +265,7 @@ async function ReportContent({ params }: Props) {
     previousDateLabel: previousRow ? formatScanDate(previousRow.createdAt) : null,
     counts,
     checkCounts,
-    aiEnabled: aiEnabledGlobal && hasKey,
+    aiEnabled: isAiAvailable,
     initialUserOptIn: user.aiOptIn,
   };
 

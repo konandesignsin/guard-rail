@@ -33,8 +33,8 @@ export async function POST(request: Request) {
     // Email allowlist check (server-side only, case-insensitive)
     if (!isEmailAllowed(user.email)) {
       return NextResponse.json(
-        { error: "AI explanations are currently disabled." },
-        { status: 503 }
+        { error: "AI isn't available for this account yet", code: "ai_email_not_allowed" },
+        { status: 403 }
       );
     }
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const config = resolveProviderConfig();
     if (!config.enabled) {
       return NextResponse.json(
-        { error: "AI explanations are currently disabled." },
+        { error: "AI is disabled on this server", code: "ai_server_disabled" },
         { status: 503 }
       );
     }
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     // Verify user opt-in
     if (!user.aiOptIn) {
       return NextResponse.json(
-        { error: "AI explanations have not been enabled for your account." },
+        { error: "AI is turned off in Settings", code: "ai_opt_in_required", requiresOptIn: true },
         { status: 403 }
       );
     }

@@ -83,20 +83,26 @@ export async function POST(req: NextRequest) {
     const user = await getOrCreateUser();
     if (!user.aiOptIn) {
       return NextResponse.json(
-        { error: "AI opt-in required", requiresOptIn: true },
+        { error: "AI is turned off in Settings", code: "ai_opt_in_required", requiresOptIn: true },
         { status: 403 }
       );
     }
 
     // Email allowlist check (server-side only, case-insensitive)
     if (!isEmailAllowed(user.email)) {
-      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+      return NextResponse.json(
+        { error: "AI isn't available for this account yet", code: "ai_email_not_allowed" },
+        { status: 403 }
+      );
     }
 
     // 5. Check AI_ENABLED
     const config = resolveProviderConfig();
     if (!config.enabled) {
-      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+      return NextResponse.json(
+        { error: "AI is disabled on this server", code: "ai_server_disabled" },
+        { status: 403 }
+      );
     }
 
     // 6. Verify scan ownership

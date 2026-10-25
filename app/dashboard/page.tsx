@@ -4,6 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { eq, and, desc } from "drizzle-orm";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { WorkspaceClient, type ScanItem } from "@/app/dashboard/workspace-client";
+import { resolveProviderConfig, isEmailAllowed } from "@/lib/ai";
 import { db } from "@/db";
 import { scans } from "@/db/schema";
 
@@ -64,12 +65,14 @@ async function DashboardContent() {
     createdAt: s.createdAt.toISOString(),
   }));
 
-  const isAiEnabled = process.env.AI_ENABLED === "true";
+  const config = resolveProviderConfig();
+  const emailAllowed = isEmailAllowed(user.email);
+  const isAiAvailable = config.enabled && emailAllowed;
 
   return (
     <WorkspaceClient
       scans={serializedScans}
-      isAiEnabled={isAiEnabled}
+      isAiEnabled={isAiAvailable}
       userOptIn={user.aiOptIn}
     />
   );

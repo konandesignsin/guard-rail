@@ -123,16 +123,25 @@ export async function POST(req: NextRequest) {
 
     const user = await getOrCreateUser();
     if (!user.aiOptIn) {
-      return NextResponse.json({ error: "AI opt-in required", requiresOptIn: true }, { status: 403 });
+      return NextResponse.json(
+        { error: "AI is turned off in Settings", code: "ai_opt_in_required", requiresOptIn: true },
+        { status: 403 }
+      );
     }
 
     if (!isEmailAllowed(user.email)) {
-      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+      return NextResponse.json(
+        { error: "AI isn't available for this account yet", code: "ai_email_not_allowed" },
+        { status: 403 }
+      );
     }
 
     const config = resolveProviderConfig();
     if (!config.enabled) {
-      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+      return NextResponse.json(
+        { error: "AI is disabled on this server", code: "ai_server_disabled" },
+        { status: 403 }
+      );
     }
 
     const { provider, model, apiKey } = config;
