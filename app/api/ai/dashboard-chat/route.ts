@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
+import { eq, and, desc } from "drizzle-orm";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { isEmailAllowed, resolveProviderConfig, callNvidiaChat } from "@/lib/ai";
 import { redactSnippet } from "@/lib/ai/redact";
+import { db } from "@/db";
+import { scans, findings } from "@/db/schema";
 
 const DAILY_LIMIT = 20;
 const MAX_MESSAGE_LENGTH = 500;
@@ -17,16 +20,78 @@ const requestSchema = z.object({
   })).max(6).default([]),
 });
 
-const systemPrompt = `You are GuardRail's security assistant on the dashboard. You help developers understand application security concepts, best practices, and general security questions.
+const systemPrompt = `You're GuardRail's security assistant — friendly, concise, and practical.
 
-CRITICAL RULES:
-1. Answer ONLY questions about application security, code security, and related topics.
-2. Be concise and practical. Give actionable advice.
-3. NEVER ask for or repeat secrets. If a key was mentioned, remind the user to rotate it.
-4. If unsure, say so. Never invent information.
-5. Refuse unrelated requests politely (e.g., "I can only help with security questions").
-6. Keep responses focused and under 200 words.
-7. Use markdown formatting for clarity (bold, code blocks, lists).`;
+You can help with:
+- Security questions about code, web apps, APIs, and infrastructure
+- Explaining scan findings and security scores
+- Answering questions about the user's recent scans
+- General security best practices and recommendations
+
+Be casual and warm. If someone says "hey" or "hi", greet them back naturally and mention what you can help with. Don't be robotic.
+
+Keep responses under ~150 words unless asked for more detail. Use markdown for clarity (bold, bullet lists, inline code).
+
+NEVER ask for or repeat secrets. If a key or credential is mentioned, remind the user to rotate it.
+Only politely redirect when the question is clearly unrelated to code, security, or the app.`;
+
+const SCAN_KEYWORDS = [
+  /\bmy\s+(last|latest|recent|most\s+recent)\b/i,
+  /\bmy\s+(scan|scans|repo|repos|repository|findings|results|score)\b/i,
+  /\b(last|latest|recent)\s+scan\b/i,
+  /\b(scan\s+result|scan\s+finding|scan\s+score)\b/i,
+  /\bexplain\s+my\b/i,
+  /\bwhat.*(found|detected|flagged)\b/i,
+  /\bhow\s+secure\b/i,
+  /\bsecurity\s+score\b/i,
+];
+
+function isScanRelated(message: string): boolean {
+  return SCAN_KEYWORDS.some((re) => re.test(message));
+}
+
+async function buildScanContext(userId: string): Promise<string | null> {
+  const [recentScan] = await db
+    .select()
+    .from(scans)
+    .where(and(eq(scans.userId, userId), eq(scans.status, "done")))
+    .orderBy(desc(scans.createdAt))
+    .limit(1);
+
+  if (!recentScan) return null;
+
+  const scanFindings = await db
+    .select({
+      severity: findings.severity,
+      title: findings.title,
+      check: findings.check,
+      file: findings.file,
+    })
+    .from(findings)
+    .where(eq(findings.scanId, recentScan.id))
+    .orderBy(desc(findings.severity))
+    .limit(10);
+
+  const counts = { high: 0, medium: 0, low: 0 };
+  for (const f of scanFindings) {
+    counts[f.severity as keyof typeof counts]++;
+  }
+
+  const repoName = recentScan.repoName ?? "a repository";
+  const score = recentScan.score ?? "N/A";
+  const date = recentScan.createdAt.toISOString().split("T")[0];
+
+  let ctx = `User's most recent scan:\n- Repo: ${repoName}\n- Score: ${score}/100\n- Date: ${date}\n- Findings: ${counts.high} high, ${counts.medium} medium, ${counts.low} low`;
+
+  if (scanFindings.length > 0) {
+    ctx += "\n\nTop findings:";
+    for (const f of scanFindings.slice(0, 5)) {
+      ctx += `\n- [${f.severity.toUpperCase()}] ${f.title} (${f.file})`;
+    }
+  }
+
+  return ctx;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,7 +126,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI opt-in required", requiresOptIn: true }, { status: 403 });
     }
 
-    // Email allowlist check (server-side only, case-insensitive)
     if (!isEmailAllowed(user.email)) {
       return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
     }
@@ -77,31 +141,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI model not configured" }, { status: 500 });
     }
 
-    // Redact user message before sending to AI
     const redactedMessage = redactSnippet(message);
     const redactedHistory = history.map((h) => ({
       role: h.role,
       content: h.role === "user" ? redactSnippet(h.content) : h.content,
     }));
 
-    const messages = [
+    const aiMessages: { role: string; content: string }[] = [
       { role: "system", content: systemPrompt },
-      ...redactedHistory.map((h) => ({ role: h.role, content: h.content })),
-      { role: "user", content: redactedMessage },
     ];
+
+    if (isScanRelated(message)) {
+      const scanCtx = await buildScanContext(user.id);
+      if (scanCtx) {
+        aiMessages.push({
+          role: "system",
+          content: `Scan context (from the user's own account):\n${scanCtx}`,
+        });
+      } else {
+        aiMessages.push({
+          role: "system",
+          content: "The user has no completed scans yet. Let them know and suggest pasting a public GitHub repo URL to start a scan.",
+        });
+      }
+    }
+
+    aiMessages.push(...redactedHistory.map((h) => ({ role: h.role, content: h.content })));
+    aiMessages.push({ role: "user", content: redactedMessage });
 
     let responseText = "";
 
     try {
       if (provider === "gemini") {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(resolvedModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const contents = messages
+        const contents = aiMessages
           .filter((m) => m.role !== "system")
           .map((m) => ({
             role: m.role === "assistant" ? "model" : "user",
             parts: [{ text: m.content }],
           }));
-        const systemMessages = messages.filter((m) => m.role === "system");
+        const systemMessages = aiMessages.filter((m) => m.role === "system");
         const systemInstruction = systemMessages.map((m) => m.content).join("\n\n");
 
         const controller = new AbortController();
@@ -129,7 +208,7 @@ export async function POST(req: NextRequest) {
           clearTimeout(timeoutId);
         }
       } else if (provider === "nvidia") {
-        const result = await callNvidiaChat(apiKey, resolvedModel, messages, REQUEST_TIMEOUT_MS);
+        const result = await callNvidiaChat(apiKey, resolvedModel, aiMessages, REQUEST_TIMEOUT_MS);
         responseText = result.text;
       } else {
         const url = "https://api.groq.com/openai/v1/chat/completions";
@@ -145,7 +224,7 @@ export async function POST(req: NextRequest) {
             },
             body: JSON.stringify({
               model: resolvedModel,
-              messages,
+              messages: aiMessages,
               temperature: 0.7,
               max_tokens: 800,
             }),

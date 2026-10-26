@@ -376,7 +376,7 @@ export function ReportView({ data }: { data: ReportData }) {
   ];
 
   return (
-    <div className="report-root min-h-full bg-[var(--bg)] pb-20 font-sans text-[var(--fg)] [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans">
+    <div className="report-root h-full overflow-y-auto bg-[var(--bg)] pb-20 font-sans text-[var(--fg)] [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans">
       <style>{REPORT_STYLES}</style>
 
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
