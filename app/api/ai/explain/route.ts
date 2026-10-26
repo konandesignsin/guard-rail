@@ -15,6 +15,8 @@ import {
   computeCacheKey,
   AI_DAILY_LIMIT,
   PROMPT_VERSION,
+  isEmailAllowed,
+  resolveProviderConfig,
 } from "@/lib/ai";
 import { redactSnippet, isForbiddenFile } from "@/lib/ai/redact";
 import type { ExplanationOutput } from "@/lib/ai/schema";
@@ -28,14 +30,17 @@ export async function POST(request: Request) {
 
     const user = await getOrCreateUser();
 
-    // Kill switch or missing key check
-    const aiEnabled = process.env.AI_ENABLED === "true";
-    const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-    const hasKey =
-      (provider === "gemini" && !!process.env.GEMINI_API_KEY) ||
-      (provider === "groq" && !!process.env.GROQ_API_KEY && !!process.env.AI_MODEL);
+    // Email allowlist check (server-side only, case-insensitive)
+    if (!isEmailAllowed(user.email)) {
+      return NextResponse.json(
+        { error: "AI explanations are currently disabled." },
+        { status: 503 }
+      );
+    }
 
-    if (!aiEnabled || !hasKey) {
+    // Kill switch or missing key check
+    const config = resolveProviderConfig();
+    if (!config.enabled) {
       return NextResponse.json(
         { error: "AI explanations are currently disabled." },
         { status: 503 }

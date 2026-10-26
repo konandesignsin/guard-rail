@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { scans, findings, aiExplanations, aiUsage, users } from "@/db/schema";
 import { getOrCreateUser } from "@/lib/get-or-create-user";
 import { redactSnippet, isForbiddenFile } from "@/lib/ai/redact";
-import { PROMPT_VERSION, AI_DAILY_LIMIT } from "@/lib/ai";
+import { PROMPT_VERSION, AI_DAILY_LIMIT, isEmailAllowed, resolveProviderConfig, callNvidia } from "@/lib/ai";
 
 const fixPromptOutputSchema = z.object({
   title: z.string().max(200),
@@ -52,9 +52,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Email allowlist check (server-side only, case-insensitive)
+    if (!isEmailAllowed(user.email)) {
+      return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
+    }
+
     // 4. Check AI_ENABLED
-    const aiEnabled = process.env.AI_ENABLED === "true";
-    if (!aiEnabled) {
+    const config = resolveProviderConfig();
+    if (!config.enabled) {
       return NextResponse.json({ error: "AI is disabled" }, { status: 403 });
     }
 
@@ -204,21 +209,8 @@ export async function POST(req: NextRequest) {
     let usedAI = false;
 
     try {
-      const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-      let model = process.env.AI_MODEL;
-      let apiKey = "";
-
-      if (provider === "gemini") {
-        model = model || process.env.AI_MODEL || "gemini-3.8-flash";
-        apiKey = process.env.GEMINI_API_KEY || "";
-      } else if (provider === "groq") {
-        apiKey = process.env.GROQ_API_KEY || "";
-        if (!model) {
-          throw new Error("AI_MODEL not configured for Groq");
-        }
-      } else {
-        throw new Error("Unknown provider");
-      }
+      const { provider, model: configModel, apiKey } = config;
+      const resolvedModel = provider === "gemini" ? (configModel || "gemini-3.8-flash") : configModel;
 
       if (apiKey) {
         // Build AI request to enhance the prompt
@@ -255,9 +247,12 @@ Suggested fix: ${targetFindings[0].fix}`;
 
         let aiResponse: string;
         if (provider === "gemini") {
-          aiResponse = await callGeminiForFixPrompt(apiKey, model, systemPrompt, userPrompt);
+          aiResponse = await callGeminiForFixPrompt(apiKey, resolvedModel, systemPrompt, userPrompt);
+        } else if (provider === "nvidia") {
+          const result = await callNvidia(apiKey, resolvedModel, systemPrompt, userPrompt, { jsonMode: true });
+          aiResponse = result.text;
         } else {
-          aiResponse = await callGroqForFixPrompt(apiKey, model, systemPrompt, userPrompt);
+          aiResponse = await callGroqForFixPrompt(apiKey, resolvedModel, systemPrompt, userPrompt);
         }
 
         // Parse and validate JSON

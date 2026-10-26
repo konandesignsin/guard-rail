@@ -61,15 +61,15 @@ export default function PrivacyPage() {
       <section id="ai-explanations" className="scroll-mt-20">
         <h2 className={sectionHeading}>3. AI explanations, chat, and fix prompts</h2>
         <p className="mt-3">
-          AI features are strictly optional and disabled by default. If you choose to enable AI features, Guardrail may send data to {AI_PROVIDER_NAME} for the following purposes:
+          AI features are strictly optional and disabled by default. While in beta, AI features may be limited to test users. If you choose to enable AI features, Guardrail may send data to {AI_PROVIDER_NAME} for the following purposes:
         </p>
         <ul className={listStyle}>
           <li><strong>AI explanations:</strong> When you click &ldquo;Explain with AI&rdquo; on a finding, Guardrail sends a redacted snippet of approximately 10 lines of code surrounding the finding to produce an advisory explanation.</li>
-          <li><strong>AI chat assistant:</strong> When you use the chat feature, Guardrail sends your message, the last 6 messages of conversation history, and a redacted snippet of the focused finding (if any) to generate a response. Chat history is not stored by Guardrail and exists only in your browser session.</li>
+          <li><strong>AI chat assistant:</strong> When you use the chat feature, Guardrail sends your message (with secrets redacted), the last 6 messages of conversation history (user messages also redacted), and a redacted snippet of the focused finding (if any) to generate a response. Chat history is not stored by Guardrail and exists only in your browser session.</li>
           <li><strong>AI fix prompts:</strong> When you generate a fix prompt, Guardrail sends the finding details and a redacted code snippet to produce a tailored prompt for use with AI coding tools.</li>
         </ul>
         <p className="mt-3">
-          All code snippets are redacted to remove common secret patterns and known sensitive values before transmission. {AI_PROVIDER_NAME} processes this data solely to generate the requested output. No full files or other repository contents leave Guardrail. Guardrail does not control {AI_PROVIDER_NAME}&rsquo;s own retention or training practices.
+          All code snippets and chat messages are redacted to remove common secret patterns and known sensitive values before transmission. {AI_PROVIDER_NAME} processes this data solely to generate the requested output. No full files or other repository contents leave Guardrail. GuardRail does not store chat history. Guardrail does not control {AI_PROVIDER_NAME}&rsquo;s own retention or training practices.
         </p>
         <p className="mt-3">
           AI features are subject to daily usage limits. Guardrail logs only the provider, latency, and token counts for privacy purposes—never message content or code snippets.
