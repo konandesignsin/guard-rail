@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FindingReportItem } from "./split-report-view";
+import type { FindingReportItem } from "@/lib/report/types";
 import type { ExplanationOutput } from "@/lib/ai/schema";
 
 interface AiExplanationSectionProps {
@@ -21,11 +21,6 @@ export function AiExplanationSection({
   onUserOptInChange,
   aiProviderName,
 }: AiExplanationSectionProps) {
-  // If AI kill-switch is active or key is missing, feature is hidden
-  if (!isAiGlobalEnabled) {
-    return null;
-  }
-
   const [isLoading, setIsLoading] = useState(false);
   const [explanation, setExplanation] = useState<ExplanationOutput | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,6 +29,12 @@ export function AiExplanationSection({
   const [feedbackState, setFeedbackState] = useState<"up" | "down" | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [cacheKey, setCacheKey] = useState<string | null>(null);
+
+  // If the AI kill-switch is active or the key is missing, the feature is hidden.
+  // Checked after the hooks so the hook order never changes between renders.
+  if (!isAiGlobalEnabled) {
+    return null;
+  }
 
   const fetchExplanation = async () => {
     setIsLoading(true);
