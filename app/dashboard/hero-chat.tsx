@@ -286,16 +286,45 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
   const enter = reducedMotion ? 0 : 0.5;
 
   return (
-    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#05060a]">
-      {/* Earth background */}
-      <div className="absolute inset-0" aria-hidden="true">
+    <div ref={heroRef} className="relative h-full min-h-[420px] w-full overflow-hidden bg-[#04060d]">
+      {/* Star field background */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden="true"
+        style={{
+          backgroundImage: `
+            radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1.5px 1.5px at 120px 80px, rgba(255,255,255,0.6), transparent),
+            radial-gradient(1px 1px at 240px 150px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 380px 60px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(1px 1px at 520px 220px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 680px 110px, rgba(255,255,255,0.8), transparent),
+            radial-gradient(1px 1px at 820px 290px, rgba(255,255,255,0.45), transparent),
+            radial-gradient(1.5px 1.5px at 940px 70px, rgba(255,255,255,0.65), transparent),
+            radial-gradient(1px 1px at 1080px 190px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(1.5px 1.5px at 1220px 130px, rgba(255,255,255,0.75), transparent),
+            radial-gradient(1px 1px at 1360px 250px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1.5px 1.5px at 1480px 90px, rgba(255,255,255,0.6), transparent)
+          `,
+          backgroundSize: "600px 350px",
+        }}
+      />
+
+      {/* Semicircle Planet anchored at bottom center */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-[55%] -translate-x-1/2 rounded-full overflow-hidden w-[230vw] h-[230vw] md:w-[150vw] md:h-[150vw] md:min-w-[1300px] md:min-h-[1300px]"
+        aria-hidden="true"
+        style={{
+          boxShadow: "0 -8px 120px 10px rgba(70,130,255,0.35), inset 0 12px 90px 10px rgba(120,170,255,0.30)",
+        }}
+      >
         <Image
           src="/videos/earth-poster.jpg"
           alt=""
           fill
           priority
-          sizes="(max-width: 767px) 100vw, 100vw"
-          className="object-cover object-[50%_68%]"
+          sizes="(max-width: 767px) 230vw, 150vw"
+          className="object-cover object-[50%_40%]"
         />
 
         {!showPosterOnly && isSmallScreen !== null && (
@@ -310,7 +339,7 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
             poster="/videos/earth-poster.jpg"
             onLoadedData={() => setVideoLoaded(true)}
             onError={() => setVideoFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover object-[50%_68%] transition-opacity duration-500"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_40%] transition-opacity duration-500"
             style={{ opacity: videoLoaded ? 1 : 0 }}
           >
             <source src={isSmallScreen ? "/videos/earth-sm.webm" : "/videos/earth.webm"} type="video/webm" />
@@ -318,33 +347,32 @@ export function HeroChat({ isAiEnabled, userOptIn, onRepoScan }: HeroChatProps) 
           </video>
         )}
 
-        {/* Soft dark scrim so legibility never depends on image brightness */}
+        {/* Thin bright limb highlight along the top arc */}
         <div
-          className="absolute inset-0"
+          className="pointer-events-none absolute inset-0 rounded-full"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(4,5,8,0.62) 0%, rgba(4,5,8,0.80) 32%, rgba(4,5,8,0.84) 68%, rgba(4,5,8,0.66) 100%)",
+            boxShadow: "inset 0 3px 6px 1px rgba(210,230,255,0.7), inset 0 1px 1px 0 rgba(255,255,255,0.9)",
           }}
         />
 
-        {/* Radial scrim directly behind the headline and input */}
+        {/* Darken the planet slightly toward the sides and bottom with a radial gradient so the middle glows */}
         <div
-          className="absolute inset-0"
+          className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(72% 48% at 50% 54%, rgba(3,4,9,0.78) 0%, rgba(3,4,9,0.5) 58%, rgba(3,4,9,0) 100%)",
-          }}
-        />
-
-        {/* Radial vignette for depth at the edges */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(110% 100% at 50% 46%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)",
+              "radial-gradient(circle at 50% 15%, rgba(0,0,0,0) 0%, rgba(2,4,12,0.4) 45%, rgba(2,4,12,0.85) 75%, rgba(2,4,12,0.98) 100%)",
           }}
         />
       </div>
+
+      {/* Atmospheric ambient glow behind the chat box */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 w-[700px] h-[360px] rounded-full blur-3xl"
+        aria-hidden="true"
+        style={{
+          background: "radial-gradient(circle, rgba(70,130,255,0.18) 0%, rgba(30,70,180,0.08) 50%, rgba(4,6,13,0) 80%)",
+        }}
+      />
 
       {/* Content */}
       <div className="relative z-10 flex h-full flex-col">
